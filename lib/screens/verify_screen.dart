@@ -7,6 +7,7 @@ import '../core/routes.dart';
 import '../core/theme.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
+import '../widgets/motion.dart';
 
 class VerifyScreen extends StatefulWidget {
   const VerifyScreen({super.key});
@@ -69,8 +70,20 @@ class _VerifyScreenState extends State<VerifyScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const BackRoundButton(),
-              const SizedBox(height: 32),
-              const IconTile(icon: Icons.smartphone_rounded, size: 64, radius: 20, iconSize: 30, bg: AppColors.sky),
+              const SizedBox(height: 14),
+              const FadeSlideIn(
+                scaleFrom: 0.6,
+                curve: Curves.easeOutBack,
+                child: Padding(
+                  padding: EdgeInsets.all(14),
+                  child: PulseRings(
+                    maxRadius: 62,
+                    rings: 2,
+                    color: AppColors.bright,
+                    child: IconTile(icon: Icons.sms_rounded, size: 64, radius: 22, iconSize: 30, active: true),
+                  ),
+                ),
+              ),
               const SizedBox(height: 22),
               const Text('Verify your number',
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
@@ -100,16 +113,33 @@ class _VerifyScreenState extends State<VerifyScreen> {
                             height: 60,
                             margin: EdgeInsets.only(right: i == _len - 1 ? 0 : 10),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: filled ? const Color(0xFFF7F9FF) : Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: active ? AppColors.blue : AppColors.border, width: 1.5),
+                              border: Border.all(
+                                color: active
+                                    ? AppColors.blue
+                                    : filled
+                                        ? const Color(0xFFB9C8F5)
+                                        : AppColors.border,
+                                width: active ? 1.8 : 1.5,
+                              ),
                               boxShadow: active
-                                  ? const [BoxShadow(color: Color(0x1A1840C8), spreadRadius: 4)]
+                                  ? const [
+                                      BoxShadow(color: Color(0x1F1840C8), spreadRadius: 4),
+                                      BoxShadow(color: Color(0x261840C8), blurRadius: 16, offset: Offset(0, 6)),
+                                    ]
                                   : null,
                             ),
                             alignment: Alignment.center,
                             child: filled
-                                ? Text(text[i], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700))
+                                ? FadeSlideIn(
+                                    key: ValueKey('d$i${text[i]}'),
+                                    duration: const Duration(milliseconds: 320),
+                                    offset: const Offset(0, 10),
+                                    scaleFrom: 0.4,
+                                    curve: Curves.easeOutBack,
+                                    child: Text(text[i], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+                                  )
                                 : active
                                     ? Container(width: 2, height: 26, color: AppColors.blue)
                                     : null,
@@ -167,6 +197,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
               PrimaryButton(
                 label: 'Verify & continue',
                 loading: _verifying,
+                shimmer: text.length == _len,
                 onPressed: text.length == _len ? _verify : null,
               ),
               const SizedBox(height: 6),

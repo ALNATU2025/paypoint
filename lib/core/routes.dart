@@ -30,46 +30,70 @@ class Routes {
   static const success = '/pay/success';
   static const receipt = '/receipt';
 
-  static Route<dynamic> onGenerate(RouteSettings s) {
-    Widget page;
-    switch (s.name) {
-      case splash:
-        page = const SplashScreen();
+  /// The page widget for a route name.
+  static Widget build(String? name, [Object? args]) {
+    switch (name) {
       case onboarding:
-        page = const OnboardingScreen();
+        return const OnboardingScreen();
       case signUp:
-        page = const SignUpScreen();
+        return const SignUpScreen();
       case verify:
-        page = const VerifyScreen();
+        return const VerifyScreen();
       case main:
-        page = MainShell(initialTab: (s.arguments as int?) ?? 0);
+        return MainShell(initialTab: (args as int?) ?? 0);
       case smartcard:
-        page = const SmartcardScreen();
+        return const SmartcardScreen();
       case packages:
-        page = const PackagesScreen();
+        return const PackagesScreen();
       case review:
-        page = const ReviewScreen();
+        return const ReviewScreen();
       case payment:
-        page = const PaymentMethodScreen();
+        return const PaymentMethodScreen();
+      case pin:
+        return const PinScreen();
+      case success:
+        return SuccessScreen(tx: args! as TvTransaction);
+      case receipt:
+        return ReceiptScreen(tx: args! as TvTransaction);
+      default:
+        return const SplashScreen();
+    }
+  }
+
+  static Route<dynamic> onGenerate(RouteSettings s) {
+    final page = build(s.name, s.arguments);
+    switch (s.name) {
+      // PIN slides up as a sheet over a dimmed, blurred backdrop.
       case pin:
         return PageRouteBuilder<void>(
           settings: s,
           opaque: false,
-          barrierColor: Colors.transparent,
-          transitionDuration: const Duration(milliseconds: 320),
-          pageBuilder: (_, __, ___) => const PinScreen(),
+          barrierColor: const Color(0x99071036),
+          transitionDuration: const Duration(milliseconds: 420),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+          pageBuilder: (_, __, ___) => page,
           transitionsBuilder: (_, a, __, child) => FadeTransition(
             opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
             child: child,
           ),
         );
+      // Celebration screens zoom in softly instead of sliding.
       case success:
-        page = SuccessScreen(tx: s.arguments! as TvTransaction);
-      case receipt:
-        page = ReceiptScreen(tx: s.arguments! as TvTransaction);
+      case main:
+        return PageRouteBuilder<void>(
+          settings: s,
+          transitionDuration: const Duration(milliseconds: 600),
+          pageBuilder: (_, __, ___) => page,
+          transitionsBuilder: (_, a, __, child) {
+            final c = CurvedAnimation(parent: a, curve: Curves.easeOutCubic);
+            return FadeTransition(
+              opacity: c,
+              child: ScaleTransition(scale: Tween(begin: 0.94, end: 1.0).animate(c), child: child),
+            );
+          },
+        );
       default:
-        page = const SplashScreen();
+        return MaterialPageRoute<void>(settings: s, builder: (_) => page);
     }
-    return MaterialPageRoute<void>(settings: s, builder: (_) => page);
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -12,6 +13,7 @@ class AppColors {
   static const Color ink = Color(0xFF0B1430);
   static const Color blue = Color(0xFF1840C8);
   static const Color bright = Color(0xFF3B6CFF);
+  static const Color electric = Color(0xFF5B8CFF);
   static const Color sky = Color(0xFFE6ECFF);
   static const Color skySoft = Color(0xFFEEF2FF);
   static const Color bg = Color(0xFFF5F7FC);
@@ -35,10 +37,58 @@ class AppColors {
   static const Color danger = Color(0xFFB42318);
   static const Color dangerBg = Color(0xFFFDE8E8);
 
-  // Shadows use ARGB literals so no deprecated opacity helpers are needed.
+  // Shadows use ARGB literals so no opacity helpers are needed.
   static const Color shadowSoft = Color(0x0F0B1A55); // ~6%
   static const Color shadowMid = Color(0x290B1A55); // ~16%
   static const Color shadowBlue = Color(0x4D1840C8); // ~30%
+}
+
+/// Brand gradients. Used sparingly: hero cards, primary actions, selected states.
+class AppGradients {
+  AppGradients._();
+
+  /// Primary call-to-action.
+  static const LinearGradient primary = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF2A55E8), AppColors.blue, Color(0xFF1433A8)],
+    stops: [0, 0.55, 1],
+  );
+
+  /// Deep navy hero surfaces (wallet, review, receipt header).
+  static const LinearGradient hero = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF1A2F8A), AppColors.navy, Color(0xFF071036)],
+    stops: [0, 0.55, 1],
+  );
+
+  /// Selected outline on option cards.
+  static const LinearGradient selectedBorder = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [AppColors.bright, AppColors.blue],
+  );
+
+  static const LinearGradient success = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF34C266), AppColors.successStrong, Color(0xFF14823A)],
+  );
+
+  static const LinearGradient warm = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFFFC24A), AppColors.orange],
+  );
+
+  /// A lighter-to-darker sweep of any brand colour (provider tiles).
+  static LinearGradient of(Color c) => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color.lerp(c, Colors.white, 0.18)!, c, Color.lerp(c, Colors.black, 0.25)!],
+        stops: const [0, 0.5, 1],
+      );
 }
 
 class AppShadows {
@@ -53,6 +103,40 @@ class AppShadows {
   static const List<BoxShadow> button = [
     BoxShadow(color: AppColors.shadowBlue, blurRadius: 28, offset: Offset(0, 12)),
   ];
+  static const List<BoxShadow> glowBlue = [
+    BoxShadow(color: Color(0x381840C8), blurRadius: 26, offset: Offset(0, 12)),
+  ];
+  static const List<BoxShadow> hero = [
+    BoxShadow(color: Color(0x520B1A55), blurRadius: 44, offset: Offset(0, 22)),
+  ];
+}
+
+/// Fade + gentle horizontal slide, used for every pushed page on Android,
+/// web and desktop. iOS keeps the native swipe-back transition.
+class PremiumPageTransitionsBuilder extends PageTransitionsBuilder {
+  const PremiumPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final incoming = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+    final outgoing = CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeOutCubic);
+    return SlideTransition(
+      position: Tween(begin: Offset.zero, end: const Offset(-0.06, 0)).animate(outgoing),
+      child: FadeTransition(
+        opacity: incoming,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0.09, 0), end: Offset.zero).animate(incoming),
+          child: child,
+        ),
+      ),
+    );
+  }
 }
 
 class AppTheme {
@@ -77,10 +161,31 @@ class AppTheme {
     return base.copyWith(
       textTheme: text,
       splashFactory: InkSparkle.splashFactory,
-      snackBarTheme: const SnackBarThemeData(
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: PremiumPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: PremiumPageTransitionsBuilder(),
+          TargetPlatform.linux: PremiumPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: PremiumPageTransitionsBuilder(),
+        },
+      ),
+      snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.navy,
+        elevation: 0,
+        insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentTextStyle: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
       ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      ),
+      textSelectionTheme: const TextSelectionThemeData(cursorColor: AppColors.blue),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
@@ -92,7 +197,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.blue, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.blue, width: 1.8),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -100,7 +205,7 @@ class AppTheme {
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.danger, width: 1.8),
         ),
       ),
       switchTheme: SwitchThemeData(

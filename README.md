@@ -23,6 +23,33 @@ A Flutter app for paying DStv, GOtv and StarTimes subscriptions. It is built fro
 
 The bottom navigation (Home · Pay TV · History · Profile) lives in `lib/screens/main_shell.dart`.
 
+## Motion and visual design
+
+All animation is built in Flutter with no extra packages. The building blocks are in `lib/widgets/motion.dart`:
+
+| Widget | What it does | Where it is used |
+|---|---|---|
+| `FadeSlideIn` + `Stagger` | Fade/slide/scale entrance with staggered delays | Every screen's content |
+| `PressScale` | Springy shrink on press, with no gesture conflicts | Buttons, cards, keypad, nav |
+| `ShimmerSweep` | Light band sweeping across a surface | Primary CTAs, wallet card, decoder card |
+| `AuroraBackground` | Slowly drifting colour glows | Splash, onboarding, review, receipt, profile |
+| `PulseRings` / `PulseDot` | Ripples and live indicators | Splash logo, OTP, success, expiry alerts |
+| `Floating` | Gentle bobbing | Onboarding illustrations |
+| `AnimatedAmount` | Counts money up smoothly | Wallet, totals, success, history |
+| `DrawnCheck` | Check mark that draws itself | Verified decoder, success, receipt |
+| `ConfettiBurst` | Physics-based confetti | Success screen |
+| `SlidingSegments` | Segmented control with a gliding pill | Providers, durations, history filters |
+| `Glass` | Frosted blur panel | Wallet chips, onboarding, nav bar |
+
+Some highlights by screen:
+- The splash logo draws itself.
+- Onboarding has parallax and a background that blends between slides.
+- The floating glass navigation bar has a sliding highlight.
+- The PIN sheet springs up, and it shakes on error.
+- Pages change with a custom fade-and-slide transition; iOS keeps its native swipe-back.
+
+Every looping or entrance animation respects the system **Reduce motion** setting.
+
 ## Project structure
 
 ```
@@ -39,6 +66,7 @@ lib/
   widgets/
     paypoint_logo.dart      Vector Paypoint "P" mark, lockup, ring decoration
     common.dart             Buttons, cards, provider badge, step progress, rows…
+    motion.dart             Animation toolkit (entrances, shimmer, aurora, confetti…)
   screens/                  All 16 screens
 test/app_test.dart          Formatter and pay-flow unit tests
 ```
@@ -47,7 +75,7 @@ The only extra dependency is `google_fonts`. State management uses plain `Change
 
 ## Getting started
 
-You need Flutter 3.24 or newer.
+You need Flutter 3.27 or newer.
 
 ```bash
 cd paypoint

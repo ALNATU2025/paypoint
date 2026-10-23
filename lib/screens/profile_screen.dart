@@ -6,6 +6,8 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
+import '../widgets/motion.dart';
+import 'main_shell.dart' show kFloatingNavClearance;
 import '../widgets/paypoint_logo.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -64,10 +66,16 @@ class ProfileScreen extends StatelessWidget {
               clipBehavior: Clip.antiAlias,
               decoration: const BoxDecoration(
                 color: AppColors.navy,
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(40)),
               ),
-              child: CustomPaint(
-                painter: RingsPainter(center: const Offset(350, 30), radii: const [90, 140], opacities: const [0.3, 0.16]),
+              child: AuroraBackground(
+                base: AppColors.navy,
+                intensity: 0.42,
+                child: CustomPaint(
+                  painter:
+                      RingsPainter(center: const Offset(350, 30), radii: const [90, 140, 190], opacities: const [0.3, 0.16, 0.08]),
+                  child: const SizedBox.expand(),
+                ),
               ),
             ),
             Padding(
@@ -79,11 +87,23 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 22),
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 32,
-                        backgroundColor: Colors.white,
-                        child: Text(Fmt.initials(s.fullName),
-                            style: const TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w800)),
+                      FadeSlideIn(
+                        scaleFrom: 0.7,
+                        curve: Curves.easeOutBack,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: SweepGradient(colors: [AppColors.bright, Colors.white, AppColors.amber, AppColors.bright]),
+                            boxShadow: [BoxShadow(color: Color(0x663B6CFF), blurRadius: 20, offset: Offset(0, 8))],
+                          ),
+                          child: CircleAvatar(
+                            radius: 32,
+                            backgroundColor: Colors.white,
+                            child: Text(Fmt.initials(s.fullName),
+                                style: const TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w800)),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -108,21 +128,24 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 26),
-                  AppCard(
+                  FadeSlideIn(
+                    delay: Stagger.at(1),
+                    child: AppCard(
                     radius: 22,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shadow: const [BoxShadow(color: Color(0x1A0B1A55), blurRadius: 30, offset: Offset(0, 10))],
                     child: IntrinsicHeight(
                       child: Row(
                         children: [
-                          Expanded(child: _Count(value: '${s.decoders.length}', label: 'Decoders')),
+                          Expanded(child: _Count(value: '${s.decoders.length}', label: 'Decoders', icon: Icons.live_tv_rounded)),
                           const VerticalDivider(color: AppColors.divider, width: 1),
-                          Expanded(child: _Count(value: '${s.transactions.length}', label: 'Payments')),
+                          Expanded(child: _Count(value: '${s.transactions.length}', label: 'Payments', icon: Icons.receipt_long_rounded)),
                           const VerticalDivider(color: AppColors.divider, width: 1),
-                          const Expanded(child: _Count(value: '1', label: 'Cards')),
+                          const Expanded(child: _Count(value: '1', label: 'Cards', icon: Icons.credit_card_rounded)),
                         ],
                       ),
                     ),
+                  ),
                   ),
                 ],
               ),
@@ -130,10 +153,12 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, kFloatingNavClearance + 8),
           child: Column(
             children: [
-              AppCard(
+              FadeSlideIn(
+                delay: Stagger.at(2),
+                child: AppCard(
                 radius: 22,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Column(
@@ -156,13 +181,17 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              ),
               const SizedBox(height: 14),
-              PrimaryButton(
+              FadeSlideIn(
+                delay: Stagger.at(3),
+                child: PrimaryButton(
                 label: 'Log out',
                 icon: Icons.logout_rounded,
                 tone: ButtonTone.danger,
                 height: 52,
                 onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(Routes.signUp, (_) => false),
+              ),
               ),
               const SizedBox(height: 18),
               const Opacity(opacity: 0.8, child: PaypointLockup(markSize: 20, fontSize: 13)),
@@ -177,16 +206,24 @@ class ProfileScreen extends StatelessWidget {
 }
 
 class _Count extends StatelessWidget {
-  const _Count({required this.value, required this.label});
+  const _Count({required this.value, required this.label, required this.icon});
   final String value;
   final String label;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 3),
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+          Icon(icon, size: 18, color: AppColors.bright),
+          const SizedBox(height: 6),
+          AnimatedAmount(
+            value: double.tryParse(value) ?? 0,
+            duration: const Duration(milliseconds: 900),
+            format: (v) => '${v.round()}',
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
         ],
       );
 }
@@ -210,7 +247,7 @@ class _MenuRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            IconTile(icon: icon, size: 38, radius: 12, iconSize: 20),
+            IconTile(icon: icon, size: 40, radius: 13, iconSize: 20),
             const SizedBox(width: 14),
             Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
             trailing ?? const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
