@@ -1,0 +1,14 @@
+
+::group::✅ Passing tests
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Fmt formats naira with grouping
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Fmt formats smartcard numbers
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Fmt initials
+✅ /home/runner/work/paypoint/paypoint/test/widget_test.dart: PrimaryButton calls onPressed once per tap
+✅ /home/runner/work/paypoint/paypoint/test/widget_test.dart: Disabled PrimaryButton ignores taps
+✅ /home/runner/work/paypoint/paypoint/test/widget_test.dart: SlidingSegments reports the tapped index
+✅ /home/runner/work/paypoint/paypoint/test/widget_test.dart: FadeSlideIn ends fully visible
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: AppState pay flow wallet payment deducts balance and records a transaction
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: AppState pay flow package price scales with months
+::endgroup::
+
+🎉 9 tests passed.

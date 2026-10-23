@@ -1,0 +1,4 @@
+total 82M
+-rw-r--r-- 1 runner runner 18M Oct 23 23:27 paypoint-arm64-v8a.apk
+-rw-r--r-- 1 runner runner 15M Oct 23 23:27 paypoint-armeabi-v7a.apk
+-rw-r--r-- 1 runner runner 50M Oct 23 23:27 paypoint-universal.apk
