@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
+import '../widgets/motion.dart';
 import 'home_screen.dart' show showFundWalletSheet;
 
 class PaymentMethodScreen extends StatelessWidget {
@@ -34,7 +35,12 @@ class PaymentMethodScreen extends StatelessWidget {
                 children: [
                   const FlowHeader(title: 'Payment method'),
                   const SizedBox(height: 24),
-                  AppCard(
+                  FadeSlideIn(
+                    delay: Stagger.at(0),
+                    child: AppCard(
+                    gradient: AppGradients.hero,
+                    shadow: AppShadows.hero,
+                    radius: 24,
                     child: Row(
                       children: [
                         Expanded(
@@ -42,31 +48,43 @@ class PaymentMethodScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text('Amount due',
-                                  style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
+                                  style: TextStyle(fontSize: 12, color: AppColors.onNavyMuted, fontWeight: FontWeight.w600)),
                               const SizedBox(height: 3),
-                              Text(Fmt.naira(d.total), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                              AnimatedAmount(
+                                value: d.total.toDouble(),
+                                duration: const Duration(milliseconds: 800),
+                                format: (v) => Fmt.naira(v.round()),
+                                style: const TextStyle(
+                                    fontSize: 26, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.8),
+                              ),
                             ],
                           ),
                         ),
-                        Container(
+                        Glass(
+                          radius: 12,
+                          tint: const Color(0x1FFFFFFF),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(color: AppColors.sky, borderRadius: BorderRadius.circular(10)),
                           child: Text('${d.provider.name} ${d.package?.name ?? ''}',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.blue)),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
                         ),
                       ],
                     ),
                   ),
+                  ),
                   const SizedBox(height: 26),
                   const Text('Pay with', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 12),
-                  for (final m in PaymentMethod.values) ...[
-                    SelectTile(
-                      selected: d.method == m,
-                      onTap: () => s.setMethod(m),
-                      leading: IconTile(icon: m.icon),
-                      title: m.title,
-                      subtitle: _subtitle(m, s),
+                  for (final (i, m) in PaymentMethod.values.indexed) ...[
+                    FadeSlideIn(
+                      delay: Stagger.at(i + 2, stepMs: 60),
+                      child: SelectTile(
+                        selected: d.method == m,
+                        onTap: () => s.setMethod(m),
+                        leading: IconTile(icon: m.icon, active: d.method == m),
+                        title: m.title,
+                        badge: m == PaymentMethod.wallet ? 'Instant' : null,
+                        subtitle: _subtitle(m, s),
+                      ),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -121,6 +139,8 @@ class PaymentMethodScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   PrimaryButton(
                     label: 'Pay ${Fmt.naira(d.total)}',
+                    icon: Icons.lock_rounded,
+                    shimmer: !walletShort,
                     onPressed: walletShort ? null : () => Navigator.of(context).pushNamed(Routes.pin),
                   ),
                 ],

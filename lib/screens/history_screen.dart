@@ -7,6 +7,9 @@ import '../data/catalog.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
+import '../widgets/motion.dart';
+import '../widgets/paypoint_logo.dart';
+import 'main_shell.dart' show kFloatingNavClearance;
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -23,54 +26,113 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final s = AppScope.of(context);
     final rows = s.transactions.where((t) => _filter == null || t.provider.id == _filter).toList();
 
+    final filterIndex = _filter == null ? 0 : Catalog.providers.indexWhere((p) => p.id == _filter) + 1;
+
     return SafeArea(
       bottom: false,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, kFloatingNavClearance + 12),
         children: [
-          const Text('History', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
+          const FadeSlideIn(
+            child: Text('History', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.9)),
+          ),
           const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-            decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(22)),
-            child: IntrinsicHeight(
-              child: Row(
-                children: [
-                  Expanded(child: _Stat(label: 'Spent this month', value: Fmt.naira(s.spentThisMonth()))),
-                  const VerticalDivider(color: Color(0xFF24398F), width: 32, thickness: 1),
-                  Expanded(child: _Stat(label: 'Renewals', value: '${s.renewalsThisMonth()}')),
-                ],
+          FadeSlideIn(
+            delay: Stagger.at(1),
+            child: Container(
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(26), boxShadow: AppShadows.hero),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(26),
+                child: Container(
+                  decoration: const BoxDecoration(gradient: AppGradients.hero),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: RingsPainter(
+                            center: const Offset(320, 10),
+                            radii: const [60, 100],
+                            opacities: const [0.4, 0.2],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _Stat(
+                                  label: 'Spent this month',
+                                  value: s.spentThisMonth().toDouble(),
+                                  format: (v) => Fmt.naira(v.round()),
+                                ),
+                              ),
+                              VerticalDivider(color: Colors.white.withValues(alpha: 0.14), width: 32, thickness: 1),
+                              Expanded(
+                                child: _Stat(
+                                  label: 'Renewals',
+                                  value: s.renewalsThisMonth().toDouble(),
+                                  format: (v) => '${v.round()}',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 18),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _Chip(label: 'All', selected: _filter == null, onTap: () => setState(() => _filter = null)),
-                for (final p in Catalog.providers)
-                  _Chip(label: p.name, selected: _filter == p.id, onTap: () => setState(() => _filter = p.id)),
-              ],
+          FadeSlideIn(
+            delay: Stagger.at(2),
+            child: SlidingSegments(
+              height: 46,
+              background: Colors.white,
+              labels: ['All', for (final p in Catalog.providers) p.name],
+              indicatorColors: [AppColors.blue, for (final p in Catalog.providers) p.color],
+              index: filterIndex,
+              onChanged: (i) => setState(() => _filter = i == 0 ? null : Catalog.providers[i - 1].id),
             ),
           ),
           const SizedBox(height: 16),
-          if (rows.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Column(
-                children: [
-                  Icon(Icons.receipt_long_rounded, size: 48, color: AppColors.faint),
-                  SizedBox(height: 12),
-                  Text('No transactions yet', style: TextStyle(fontWeight: FontWeight.w700)),
-                ],
-              ),
-            )
-          else
-            for (final t in rows) ...[
-              _TxTile(tx: t),
-              const SizedBox(height: 10),
-            ],
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            child: Column(
+              key: ValueKey(_filter),
+              children: rows.isEmpty
+                  ? [
+                      const FadeSlideIn(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 48),
+                          child: Column(
+                            children: [
+                              IconTile(icon: Icons.receipt_long_rounded, size: 72, radius: 24, iconSize: 34),
+                              SizedBox(height: 14),
+                              Text('No transactions yet', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                              SizedBox(height: 4),
+                              Text('Payments for this provider will show up here.',
+                                  style: TextStyle(color: AppColors.muted, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ]
+                  : [
+                      for (final (i, t) in rows.indexed) ...[
+                        FadeSlideIn(
+                          delay: Stagger.at(i + 3, stepMs: 60),
+                          offset: const Offset(0, 18),
+                          child: _TxTile(tx: t),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                    ],
+            ),
+          ),
         ],
       ),
     );
@@ -78,42 +140,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
+  const _Stat({required this.label, required this.value, required this.format});
   final String label;
-  final String value;
+  final double value;
+  final String Function(double) format;
 
   @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.onNavyMuted, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.w800)),
+          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.onNavyMuted, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          AnimatedAmount(
+            value: value,
+            format: format,
+            style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800, letterSpacing: -0.6),
+          ),
         ],
-      );
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.selected, required this.onTap});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(
-          label: Text(label),
-          selected: selected,
-          onSelected: (_) => onTap(),
-          showCheckmark: false,
-          selectedColor: AppColors.blue,
-          backgroundColor: Colors.white,
-          labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: selected ? Colors.white : AppColors.label),
-          side: BorderSide(color: selected ? AppColors.blue : AppColors.border, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        ),
       );
 }
 
@@ -129,7 +172,7 @@ class _TxTile extends StatelessWidget {
       onTap: () => Navigator.of(context).pushNamed(Routes.receipt, arguments: tx),
       child: Row(
         children: [
-          ProviderBadge(provider: tx.provider, width: 44, height: 44, fontSize: 11, radius: 14, short: true),
+          ProviderBadge(provider: tx.provider, width: 46, height: 46, fontSize: 11, radius: 15, short: true),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

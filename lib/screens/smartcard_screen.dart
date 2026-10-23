@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../services/billing_service.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
+import '../widgets/motion.dart';
 
 class SmartcardScreen extends StatefulWidget {
   const SmartcardScreen({super.key});
@@ -115,27 +116,32 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
                   const FlowHeader(title: 'Cable TV subscription'),
                   const SizedBox(height: 22),
                   const StepProgress(step: 1, total: 3, label: 'Decoder details'),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 22),
+                  FadeSlideIn(
+                    delay: Stagger.at(1),
+                    child: _DecoderPreview(provider: p, number: d.number, verified: customer != null),
+                  ),
+                  const SizedBox(height: 22),
                   const Text('Provider',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.label)),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      for (final x in Catalog.providers) ...[
-                        Expanded(
-                          child: _ProviderSegment(
-                            provider: x,
-                            selected: x.id == p.id,
-                            onTap: () {
-                              s.setProvider(x);
-                              _number.clear();
-                              setState(() => _error = null);
-                            },
-                          ),
-                        ),
-                        if (x != Catalog.providers.last) const SizedBox(width: 10),
-                      ],
-                    ],
+                  FadeSlideIn(
+                    delay: Stagger.at(2),
+                    child: SlidingSegments(
+                      height: 54,
+                      fontSize: 15,
+                      labels: [for (final x in Catalog.providers) x.name],
+                      italic: [for (final x in Catalog.providers) x.italicWordmark],
+                      indicatorColors: [for (final x in Catalog.providers) x.color],
+                      background: Colors.white,
+                      unselectedText: AppColors.label,
+                      index: Catalog.providers.indexWhere((x) => x.id == p.id),
+                      onChanged: (i) {
+                        s.setProvider(Catalog.providers[i]);
+                        _number.clear();
+                        setState(() => _error = null);
+                      },
+                    ),
                   ),
                   const SizedBox(height: 22),
                   Text(p.idLabel,
@@ -181,13 +187,18 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
                   const Text('Found on the sticker under your decoder.',
                       style: TextStyle(fontSize: 12, color: AppColors.muted)),
                   AnimatedSize(
-                    duration: const Duration(milliseconds: 280),
+                    duration: const Duration(milliseconds: 380),
                     curve: Curves.easeOutCubic,
                     child: customer == null
                         ? const SizedBox(width: double.infinity)
                         : Padding(
                             padding: const EdgeInsets.only(top: 20),
-                            child: _VerifiedCard(customer: customer),
+                            child: FadeSlideIn(
+                              key: ValueKey(customer.accountName + d.number),
+                              scaleFrom: 0.94,
+                              curve: Curves.easeOutBack,
+                              child: _VerifiedCard(customer: customer),
+                            ),
                           ),
                   ),
                   if (customer != null) ...[
@@ -201,57 +212,12 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: PrimaryButton(
                 label: 'Choose package',
+                trailingIcon: Icons.arrow_forward_rounded,
+                shimmer: customer != null,
                 onPressed: customer == null ? null : () => Navigator.of(context).pushNamed(Routes.packages),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProviderSegment extends StatelessWidget {
-  const _ProviderSegment({required this.provider, required this.selected, required this.onTap});
-  final TvProvider provider;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      selected: selected,
-      button: true,
-      label: provider.name,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 52,
-        decoration: BoxDecoration(
-          color: selected ? provider.color : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? provider.color : AppColors.border, width: selected ? 2 : 1.5),
-          boxShadow: selected
-              ? const [BoxShadow(color: Color(0x2E0B1A55), blurRadius: 22, offset: Offset(0, 10))]
-              : null,
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          borderRadius: BorderRadius.circular(16),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Center(
-              child: Text(
-                provider.name,
-                style: TextStyle(
-                  fontSize: provider.name.length > 5 ? 14 : 15,
-                  fontWeight: FontWeight.w800,
-                  fontStyle: provider.italicWordmark ? FontStyle.italic : FontStyle.normal,
-                  color: selected ? Colors.white : AppColors.label,
-                ),
-              ),
-            ),
-          ),
         ),
       ),
     );
@@ -266,14 +232,22 @@ class _VerifiedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final days = customer.dueDate.difference(DateTime.now()).inDays;
     return AppCard(
+      border: Border.all(color: const Color(0xFFCDEFD8), width: 1.5),
+      shadow: const [BoxShadow(color: Color(0x1A1E9A3E), blurRadius: 22, offset: Offset(0, 10))],
       child: Column(
         children: [
           Row(
             children: [
-              const CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.successBg,
-                child: Icon(Icons.check_rounded, color: AppColors.success, size: 22),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppGradients.success,
+                  boxShadow: [BoxShadow(color: Color(0x4D1E9A3E), blurRadius: 14, offset: Offset(0, 6))],
+                ),
+                alignment: Alignment.center,
+                child: const DrawnCheck(size: 26, strokeWidth: 3.4, delay: Duration(milliseconds: 180)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -329,4 +303,129 @@ class _Kv extends StatelessWidget {
           Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
         ],
       );
+}
+
+/// A card-shaped preview of the decoder being paid for, tinted with the
+/// provider's colour. Digits fill in as they're typed.
+class _DecoderPreview extends StatelessWidget {
+  const _DecoderPreview({required this.provider, required this.number, required this.verified});
+  final TvProvider provider;
+  final String number;
+  final bool verified;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = number.padRight(provider.idLength, '•');
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      height: 150,
+      decoration: BoxDecoration(
+        gradient: AppGradients.of(provider.color),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: provider.color.withValues(alpha: 0.35), blurRadius: 28, offset: const Offset(0, 14))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: ShimmerSweep(
+          opacity: 0.14,
+          period: const Duration(milliseconds: 4800),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -40,
+                top: -50,
+                child: Container(
+                  width: 170,
+                  height: 170,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.08)),
+                ),
+              ),
+              Positioned(
+                right: 30,
+                bottom: -70,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1.5),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: Text(
+                            provider.name,
+                            key: ValueKey(provider.id),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              fontStyle: provider.italicWordmark ? FontStyle.italic : FontStyle.normal,
+                              letterSpacing: -0.4,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
+                          child: verified
+                              ? const Glass(
+                                  key: ValueKey('ok'),
+                                  radius: 12,
+                                  tint: Color(0x26FFFFFF),
+                                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.verified_rounded, color: Colors.white, size: 14),
+                                      SizedBox(width: 4),
+                                      Text('Verified',
+                                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                                    ],
+                                  ),
+                                )
+                              : const Icon(Icons.wifi_tethering_rounded, key: ValueKey('wait'), color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Text(
+                      provider.idLabel.toUpperCase(),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      Fmt.smartcard(shown),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2.2,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

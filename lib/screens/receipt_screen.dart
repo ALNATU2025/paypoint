@@ -5,6 +5,7 @@ import '../core/formatters.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
+import '../widgets/motion.dart';
 import '../widgets/paypoint_logo.dart';
 
 class ReceiptScreen extends StatelessWidget {
@@ -25,7 +26,10 @@ class ReceiptScreen extends StatelessWidget {
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: AppColors.navy,
-        body: SafeArea(
+        body: AuroraBackground(
+          base: AppColors.navy,
+          intensity: 0.35,
+          child: SafeArea(
           child: Column(
             children: [
               Expanded(
@@ -34,18 +38,50 @@ class ReceiptScreen extends StatelessWidget {
                   children: [
                     const FlowHeader(title: 'Transaction receipt', onDark: true),
                     const SizedBox(height: 26),
-                    Container(
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26)),
-                      child: Column(
+                    FadeSlideIn(
+                      offset: const Offset(0, 80),
+                      duration: const Duration(milliseconds: 700),
+                      child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 40, offset: Offset(0, 20))],
+                      ),
+                      child: Stack(
+                        children: [
+                          const Positioned(
+                            right: -30,
+                            bottom: -30,
+                            child: Opacity(opacity: 0.04, child: PaypointMark(size: 200)),
+                          ),
+                          Column(
                         children: [
                           Padding(
                             padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
                             child: Column(
                               children: [
                                 const PaypointLockup(markSize: 26, fontSize: 17),
+                                const SizedBox(height: 18),
+                                Container(
+                                  width: 54,
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: tx.success ? AppGradients.success : null,
+                                    color: tx.success ? null : AppColors.danger,
+                                    boxShadow: const [BoxShadow(color: Color(0x401E9A3E), blurRadius: 16, offset: Offset(0, 6))],
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: tx.success
+                                      ? const DrawnCheck(size: 32, strokeWidth: 4, delay: Duration(milliseconds: 500))
+                                      : const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                                ),
                                 const SizedBox(height: 14),
-                                Text(Fmt.naira(tx.amount, kobo: true),
-                                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -1)),
+                                AnimatedAmount(
+                                  value: tx.amount.toDouble(),
+                                  format: (v) => Fmt.naira(v, kobo: true),
+                                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -1),
+                                ),
                                 const SizedBox(height: 8),
                                 StatusPill(success: tx.success),
                               ],
@@ -111,6 +147,9 @@ class ReceiptScreen extends StatelessWidget {
                           ),
                         ],
                       ),
+                        ],
+                      ),
+                    ),
                     ),
                   ],
                 ),
@@ -146,6 +185,7 @@ class ReceiptScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

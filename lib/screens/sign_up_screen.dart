@@ -5,6 +5,7 @@ import '../core/routes.dart';
 import '../core/theme.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
+import '../widgets/motion.dart';
 import '../widgets/paypoint_logo.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -42,7 +43,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
+      body: Stack(
+        children: [
+          const Positioned(top: -140, right: -120, child: _Glow(size: 360, color: Color(0x2E3B6CFF))),
+          const Positioned(top: 120, left: -160, child: _Glow(size: 300, color: Color(0x1A1840C8))),
+          SafeArea(
         child: CustomScrollView(
           slivers: [
             SliverPadding(
@@ -54,25 +59,38 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
-                        children: [
-                          LogoTile(),
-                          SizedBox(width: 10),
-                          Text('Paypoint',
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.navy)),
-                        ],
+                      FadeSlideIn(
+                        delay: Stagger.at(0),
+                        child: const Row(
+                          children: [
+                            LogoTile(),
+                            SizedBox(width: 10),
+                            Text('Paypoint',
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.navy)),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 36),
-                      const Text('Create your account',
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "It takes less than a minute. We'll send a code to verify your number.",
-                        style: TextStyle(fontSize: 15, height: 1.5, color: AppColors.body),
+                      FadeSlideIn(
+                        delay: Stagger.at(1),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Create your account',
+                                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.9)),
+                            SizedBox(height: 8),
+                            Text(
+                              "It takes less than a minute. We'll send a code to verify your number.",
+                              style: TextStyle(fontSize: 15, height: 1.5, color: AppColors.body),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 32),
-                      const _FieldLabel('Full name'),
-                      TextFormField(
+                      FadeSlideIn(delay: Stagger.at(2), child: const _FieldLabel('Full name')),
+                      FadeSlideIn(
+                        delay: Stagger.at(2),
+                        child: TextFormField(
                         controller: _name,
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.next,
@@ -80,10 +98,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         style: _inputStyle,
                         decoration: const InputDecoration(hintText: 'e.g. Ada Okafor'),
                         validator: (v) => (v == null || v.trim().length < 3) ? 'Enter your full name' : null,
-                      ),
+                      )),
                       const SizedBox(height: 18),
-                      const _FieldLabel('Phone number'),
-                      TextFormField(
+                      FadeSlideIn(delay: Stagger.at(3), child: const _FieldLabel('Phone number')),
+                      FadeSlideIn(
+                        delay: Stagger.at(3),
+                        child: TextFormField(
                         controller: _phone,
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
@@ -99,10 +119,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
                         ),
                         validator: (v) => (v == null || v.length < 10) ? 'Enter a valid phone number' : null,
-                      ),
+                      )),
                       const SizedBox(height: 18),
-                      const _FieldLabel('Email', hint: '(optional, for receipts)'),
-                      TextFormField(
+                      FadeSlideIn(delay: Stagger.at(4), child: const _FieldLabel('Email', hint: '(optional, for receipts)')),
+                      FadeSlideIn(
+                        delay: Stagger.at(4),
+                        child: TextFormField(
                         controller: _email,
                         keyboardType: TextInputType.emailAddress,
                         autofillHints: const [AutofillHints.email],
@@ -112,7 +134,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           if (v == null || v.isEmpty) return null;
                           return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v) ? null : 'Enter a valid email';
                         },
-                      ),
+                      )),
                       const SizedBox(height: 22),
                       const Text.rich(
                         TextSpan(children: [
@@ -127,7 +149,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const Spacer(),
                       const SizedBox(height: 24),
-                      PrimaryButton(label: 'Continue', loading: _submitting, onPressed: _continue),
+                      FadeSlideIn(
+                        delay: Stagger.at(6),
+                        child: PrimaryButton(label: 'Continue', loading: _submitting, shimmer: true, onPressed: _continue),
+                      ),
                       const SizedBox(height: 10),
                       Center(
                         child: TextButton(
@@ -149,8 +174,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ],
         ),
       ),
+        ],
+      ),
     );
   }
+}
+
+/// Soft radial colour glow used behind light screens.
+class _Glow extends StatelessWidget {
+  const _Glow({required this.size, required this.color});
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+          ),
+        ),
+      );
 }
 
 const _inputStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.ink);

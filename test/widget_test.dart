@@ -1,30 +1,60 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:paypoint/widgets/common.dart';
+import 'package:paypoint/widgets/motion.dart';
 
-import 'package:paypoint/main.dart';
+// Widget tests use plain MaterialApp (no Google Fonts) so they run offline.
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('PrimaryButton calls onPressed once per tap', (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: Center(child: PrimaryButton(label: 'Pay', onPressed: () => taps++))),
+    ));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.tap(find.text('Pay'));
+    await tester.pumpAndSettle();
+    expect(taps, 1);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('Disabled PrimaryButton ignores taps', (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(body: Center(child: PrimaryButton(label: 'Pay', onPressed: null))),
+    ));
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.text('Pay'));
+    await tester.pumpAndSettle();
+    // No exception and nothing to assert beyond the button still being there.
+    expect(find.text('Pay'), findsOneWidget);
+  });
+
+  testWidgets('SlidingSegments reports the tapped index', (tester) async {
+    var index = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) => SlidingSegments(
+            labels: const ['1 month', '3 months', '6 months'],
+            index: index,
+            onChanged: (i) => setState(() => index = i),
+          ),
+        ),
+      ),
+    ));
+
+    await tester.tap(find.text('6 months'));
+    await tester.pumpAndSettle();
+    expect(index, 2);
+  });
+
+  testWidgets('FadeSlideIn ends fully visible', (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(body: FadeSlideIn(child: Text('Hello'))),
+    ));
+    await tester.pumpAndSettle();
+    final opacity = tester.widget<Opacity>(
+      find.ancestor(of: find.text('Hello'), matching: find.byType(Opacity)).first,
+    );
+    expect(opacity.opacity, 1.0);
   });
 }
