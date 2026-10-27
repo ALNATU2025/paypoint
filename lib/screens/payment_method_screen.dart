@@ -118,10 +118,10 @@ class PaymentMethodScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Card, bank transfer or USSD',
+                                Text('Need more balance?',
                                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
                                 SizedBox(height: 2),
-                                Text('Top up your wallet securely with Paystack',
+                                Text('See how to fund your wallet',
                                     style: TextStyle(fontSize: 12, color: AppColors.muted)),
                               ],
                             ),

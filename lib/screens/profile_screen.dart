@@ -37,8 +37,8 @@ class ProfileScreen extends StatelessWidget {
                     'For DStv/GOtv you can also clear the error code via the provider\'s self-service.',
               ),
               _HelpItem(
-                q: 'I funded my wallet but the balance did not change',
-                a: 'Open Fund wallet again and tap "I\'ve paid — check now", or pull down on Home to refresh.',
+                q: 'My wallet was credited but the balance did not change',
+                a: 'Open Fund wallet and tap "Check for new funds", or pull down on Home to refresh.',
               ),
             ],
           ),
