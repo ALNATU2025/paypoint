@@ -21,6 +21,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
   static const _durations = [1, 3, 6];
   bool _loading = false;
   String? _error;
+  String _query = '';
 
   @override
   void initState() {
@@ -51,6 +52,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
   /// Keep the selected package pointing at the live (current-price) entry, and
   /// preselect the customer's current bouquet when nothing is chosen yet.
   void _syncSelection(AppState s) {
+    if (s.draft.renew) return;
     final list = s.packagesFor(s.draft.provider) ?? const <TvPackage>[];
     final want = s.draft.package?.id ?? s.draft.customer?.currentBouquetCode;
     final match = list.where((p) => p.id == want).toList();
@@ -69,7 +71,9 @@ class _PackagesScreenState extends State<PackagesScreen> {
     final p = d.provider;
     final sel = d.package;
     final currentCode = d.customer?.currentBouquetCode;
-    final packages = s.packagesFor(p);
+    final all = s.packagesFor(p);
+    final q = _query.trim().toLowerCase();
+    final packages = all == null || q.isEmpty ? all : all.where((x) => x.name.toLowerCase().contains(q)).toList();
 
     Widget body;
     if (packages == null && _error == null) {
@@ -88,6 +92,12 @@ class _PackagesScreenState extends State<PackagesScreen> {
               ),
             ),
         ],
+      );
+    } else if (packages != null && packages.isEmpty && q.isNotEmpty) {
+      body = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 28),
+        child: Text('No package matches "$_query".',
+            textAlign: TextAlign.center, style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
       );
     } else if (packages == null || packages.isEmpty) {
       body = Padding(
@@ -117,7 +127,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
               delay: Stagger.at(i + 1, baseMs: 0, stepMs: 35),
               child: SelectTile(
                 radioFirst: true,
-                selected: sel?.id == pkg.id,
+                selected: !d.renew && sel?.id == pkg.id,
                 onTap: () => s.setPackage(pkg),
                 title: pkg.name,
                 badge: pkg.id == currentCode ? 'Current' : null,
@@ -182,13 +192,33 @@ class _PackagesScreenState extends State<PackagesScreen> {
                         ),
                       ),
                     ],
-                    if (p.supportsMonths) ...[
+                    if (s.canRenew) ...[
+                      const SizedBox(height: 16),
+                      FadeSlideIn(child: _RenewCard(customer: d.customer!, selected: d.renew, onTap: s.selectRenewal)),
+                      const SizedBox(height: 14),
+                      const Text('Or change bouquet',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.label)),
+                    ],
+                    if (p.supportsMonths && !d.renew) ...[
                       const SizedBox(height: 16),
                       FadeSlideIn(
                         child: SlidingSegments(
                           labels: [for (final m in _durations) '$m month${m == 1 ? '' : 's'}'],
                           index: _durations.contains(d.months) ? _durations.indexOf(d.months) : 0,
                           onChanged: (i) => s.setMonths(_durations[i]),
+                        ),
+                      ),
+                    ],
+                    if ((all?.length ?? 0) > 10) ...[
+                      const SizedBox(height: 14),
+                      TextField(
+                        onChanged: (v) => setState(() => _query = v),
+                        textInputAction: TextInputAction.search,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        decoration: InputDecoration(
+                          hintText: 'Search ${all!.length} ${p.name} packages',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
                     ],
@@ -207,7 +237,9 @@ class _PackagesScreenState extends State<PackagesScreen> {
             _CheckoutBar(
               caption: sel == null
                   ? 'No package selected'
-                  : '${sel.name} · ${d.months} month${d.months == 1 ? '' : 's'}',
+                  : d.renew
+                      ? 'Renew ${sel.name}'
+                      : '${sel.name} · ${d.months} month${d.months == 1 ? '' : 's'}',
               total: d.total.toDouble(),
               onContinue: sel == null ? null : () => Navigator.of(context).pushNamed(Routes.review),
             ),
@@ -274,6 +306,93 @@ class _CheckoutBar extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Renew current bouquet" at VTPass's Renewal_Amount (DStv / GOtv).
+class _RenewCard extends StatelessWidget {
+  const _RenewCard({required this.customer, required this.selected, required this.onTap});
+  final CustomerLookup customer;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: PressScale(
+        scale: 0.98,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          decoration: BoxDecoration(
+            gradient: AppGradients.hero,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: selected ? AppColors.bright : Colors.transparent, width: 2),
+            boxShadow: selected ? AppShadows.hero : AppShadows.card,
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            borderRadius: BorderRadius.circular(22),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.autorenew_rounded, color: Colors.white),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Renew current bouquet',
+                              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 3),
+                          Text(
+                            customer.currentBouquet?.isNotEmpty == true
+                                ? customer.currentBouquet!
+                                : 'Same bouquet as now',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: AppColors.onNavyMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(Fmt.naira(customer.renewalAmount ?? 0),
+                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: selected
+                              ? const Icon(Icons.check_circle_rounded, key: ValueKey(1), color: AppColors.amber, size: 22)
+                              : const Icon(Icons.radio_button_unchecked_rounded,
+                                  key: ValueKey(0), color: AppColors.onNavyMuted, size: 22),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

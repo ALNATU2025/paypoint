@@ -20,7 +20,7 @@ class ReviewScreen extends StatelessWidget {
     final List<(String, String, Color?)> rows = [
       ('Account name', d.customer?.accountName ?? '—', null),
       (d.provider.idLabel.replaceAll(' number', ''), Fmt.smartcard(d.number), null),
-      ('Package', '${pkg.name} · ${d.months} mo', null),
+      ('Package', d.renew ? '${pkg.name} (renewal)' : '${pkg.name} · ${d.months} mo', null),
       ('Paid from', 'Wallet · ${Fmt.naira(s.walletBalance, kobo: true)}', null),
       ('Service fee', d.serviceFee == 0 ? 'Free' : Fmt.naira(d.serviceFee), d.serviceFee == 0 ? AppColors.success : null),
     ];
@@ -85,7 +85,10 @@ class ReviewScreen extends StatelessWidget {
                                           radius: 14,
                                           tint: const Color(0x1AFFFFFF),
                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                          child: Text('${pkg.name} · ${d.months} month${d.months == 1 ? '' : 's'}',
+                                          child: Text(
+                                              d.renew
+                                                  ? 'Renew ${pkg.name}'
+                                                  : '${pkg.name} · ${d.months} month${d.months == 1 ? '' : 's'}',
                                               style: const TextStyle(
                                                   color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
                                         ),
