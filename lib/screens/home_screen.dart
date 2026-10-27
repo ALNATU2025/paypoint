@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/formatters.dart';
 import '../core/routes.dart';
@@ -547,118 +546,52 @@ class _DecoderTile extends StatelessWidget {
   }
 }
 
-/// Bottom sheet to top up the wallet through Paystack checkout.
+/// How to add money to the wallet. Card funding is not live yet, so wallets
+/// are topped up by Paypoint support (admin credit on the backend).
 Future<void> showFundWalletSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (ctx) => Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-      child: _FundWalletSheet(hostContext: context),
-    ),
+    builder: (ctx) => _FundWalletSheet(hostContext: context),
   );
 }
 
 class _FundWalletSheet extends StatefulWidget {
   const _FundWalletSheet({required this.hostContext});
-
-  /// The page that opened the sheet, used for snack bars after it closes.
   final BuildContext hostContext;
 
   @override
   State<_FundWalletSheet> createState() => _FundWalletSheetState();
 }
 
-class _FundWalletSheetState extends State<_FundWalletSheet> with WidgetsBindingObserver {
-  static const _amounts = [2000, 5000, 10000, 20000];
-  final _custom = TextEditingController();
-  int? _picked = 5000;
-  String? _reference;
-  bool _busy = false;
-  String? _note;
+class _FundWalletSheetState extends State<_FundWalletSheet> {
+  bool _refreshing = false;
 
-  int? get _amount {
-    final typed = int.tryParse(_custom.text.replaceAll(RegExp(r'\D'), ''));
-    return typed ?? _picked;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _custom.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _custom.dispose();
-    super.dispose();
-  }
-
-  /// When the user comes back from the browser, check the payment.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _reference != null && !_busy) _verify(auto: true);
-  }
-
-  Future<void> _start() async {
-    final amount = _amount;
-    if (amount == null || amount < 100) {
-      setState(() => _note = 'Enter at least ₦100');
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _note = null;
-    });
-    try {
-      final (url, reference) = await AppScope.read(context).startFunding(amount);
-      _reference = reference;
-      final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      if (!opened) throw ApiException('Could not open the payment page.');
-      if (mounted) setState(() => _note = 'Complete the payment in your browser, then come back here.');
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _note = e.message);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _verify({bool auto = false}) async {
-    final ref = _reference;
-    if (ref == null) return;
-    setState(() => _busy = true);
+  Future<void> _refresh() async {
+    final s = AppScope.read(context);
+    final before = s.walletBalance;
     final messenger = ScaffoldMessenger.of(widget.hostContext);
+    setState(() => _refreshing = true);
     try {
-      final status = await AppScope.read(context).verifyFunding(ref);
+      await s.refresh();
       if (!mounted) return;
-      switch (status) {
-        case TxStatus.success:
-          final amount = _amount ?? 0;
-          Navigator.of(context).pop();
-          messenger.showSnackBar(
-            SnackBar(content: Text('${Fmt.naira(amount)} added to your wallet')),
-          );
-          return;
-        case TxStatus.failed:
-          setState(() {
-            _note = 'That payment was not completed. You can try again.';
-            _reference = null;
-          });
-        case TxStatus.pending:
-          if (!auto) setState(() => _note = "We haven't received confirmation yet. If you've paid, wait a moment and check again.");
+      final added = s.walletBalance - before;
+      if (added > 0) {
+        Navigator.of(context).pop();
+        messenger.showSnackBar(SnackBar(content: Text('${Fmt.naira(added)} added to your wallet')));
+      } else {
+        messenger.showSnackBar(const SnackBar(content: Text('No new funds yet. Check again shortly.')));
       }
     } on ApiException catch (e) {
-      if (mounted && !auto) setState(() => _note = e.message);
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _refreshing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final waiting = _reference != null;
+    final s = AppScope.of(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -676,128 +609,58 @@ class _FundWalletSheetState extends State<_FundWalletSheet> with WidgetsBindingO
                     children: [
                       Text('Fund wallet', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
                       SizedBox(height: 2),
-                      Text('Card, bank transfer or USSD via Paystack',
-                          style: TextStyle(fontSize: 13, color: AppColors.body)),
+                      Text('Card top-up is coming soon', style: TextStyle(fontSize: 13, color: AppColors.body)),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 22),
-            if (!waiting) ...[
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 2.8,
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppColors.skySoft, borderRadius: BorderRadius.circular(18)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final (idx, a) in _amounts.indexed)
-                    FadeSlideIn(
-                      delay: Stagger.at(idx, baseMs: 80, stepMs: 50),
-                      child: _AmountChip(
-                        label: Fmt.naira(a),
-                        selected: _custom.text.isEmpty && _picked == a,
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          _custom.clear();
-                          setState(() => _picked = a);
-                        },
+                  const Text(
+                    'To add money now, contact Paypoint support with your wallet number below. '
+                    'Your balance updates as soon as it is credited.',
+                    style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.label),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text('WALLET NUMBER',
+                      style: TextStyle(fontSize: 10, letterSpacing: 1.4, fontWeight: FontWeight.w800, color: AppColors.muted)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(s.phone,
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 1)),
                       ),
-                    ),
+                      IconButton.filledTonal(
+                        tooltip: 'Copy wallet number',
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: s.phone));
+                          HapticFeedback.selectionClick();
+                          ScaffoldMessenger.of(widget.hostContext)
+                              .showSnackBar(const SnackBar(content: Text('Wallet number copied')));
+                        },
+                        icon: const Icon(Icons.copy_rounded, size: 18),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _custom,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                decoration: const InputDecoration(prefixText: '₦ ', hintText: 'Or enter another amount'),
-              ),
-            ] else
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: AppColors.skySoft, borderRadius: BorderRadius.circular(18)),
-                child: Row(
-                  children: [
-                    const PulseDot(color: AppColors.blue),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Waiting for your ${Fmt.naira(_amount ?? 0)} payment…',
-                        style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            if (_note != null) ...[
-              const SizedBox(height: 12),
-              Text(_note!, style: const TextStyle(fontSize: 13, color: AppColors.body, height: 1.4)),
-            ],
-            const SizedBox(height: 20),
-            if (waiting) ...[
-              PrimaryButton(
-                label: "I've paid — check now",
-                icon: Icons.refresh_rounded,
-                loading: _busy,
-                onPressed: () => _verify(),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton(
-                  onPressed: _busy ? null : _start,
-                  child: const Text('Open payment page again', style: TextStyle(fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ] else
-              PrimaryButton(
-                label: 'Pay ${Fmt.naira(_amount ?? 0)} with Paystack',
-                icon: Icons.lock_rounded,
-                shimmer: true,
-                loading: _busy,
-                onPressed: (_amount ?? 0) >= 100 ? _start : null,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AmountChip extends StatelessWidget {
-  const _AmountChip({required this.label, required this.selected, required this.onTap});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return PressScale(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOut,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            gradient: selected ? AppGradients.primary : null,
-            color: selected ? null : Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: selected ? Colors.transparent : AppColors.border, width: 1.5),
-            boxShadow: selected ? AppShadows.glowBlue : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: selected ? Colors.white : AppColors.label,
             ),
-          ),
+            const SizedBox(height: 20),
+            PrimaryButton(
+              label: 'Check for new funds',
+              icon: Icons.refresh_rounded,
+              loading: _refreshing,
+              onPressed: _refresh,
+            ),
+          ],
         ),
       ),
     );

@@ -261,7 +261,7 @@ class FundingTransaction {
         amount: (j['amount'] as num? ?? 0).round(),
         date: DateTime.tryParse((j['createdAt'] ?? '').toString())?.toLocal() ?? DateTime.now(),
         status: _status(j['status']),
-        channel: (j['channel'] ?? 'paystack').toString(),
+        channel: (j['channel'] ?? 'admin').toString(),
       );
 }
 

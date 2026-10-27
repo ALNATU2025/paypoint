@@ -245,25 +245,6 @@ class AppState extends ChangeNotifier {
     await _prefs?.setBool(_kReminders, on);
   }
 
-  // ---------- wallet funding (Paystack) ----------
-
-  /// Starts a Paystack checkout. Returns (checkout URL, reference).
-  Future<(String, String)> startFunding(int amount) async {
-    final data = await api.post('/api/wallet/fund/initialize', {'amount': amount}) as Map<String, dynamic>;
-    return (data['authorizationUrl'] as String, data['reference'] as String);
-  }
-
-  /// Confirms a checkout with the backend. Returns the funding status.
-  Future<TxStatus> verifyFunding(String reference) async {
-    final data = await api.get('/api/wallet/fund/verify/${Uri.encodeComponent(reference)}') as Map<String, dynamic>;
-    final balance = (data['balance'] as num?)?.toDouble();
-    if (balance != null && user != null) user = user!.copyWith(balance: balance);
-    final tx = FundingTransaction.fromJson(data['transaction'] as Map<String, dynamic>);
-    if (tx.status != TxStatus.pending) refreshHistory();
-    notifyListeners();
-    return tx.status;
-  }
-
   // ---------- pay flow ----------
 
   void startFlow(TvProvider provider) {

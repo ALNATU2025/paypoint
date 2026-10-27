@@ -1,7 +1,7 @@
 # Paypoint — Cable TV bill payment (Flutter)
 
 > **Live backend:** the app talks to the Paypoint API (`ALNATU2025/paypoint-backend`, deployed at
-> `https://paypoint-backend-aj52.onrender.com`). That API sells DStv, GOtv and StarTimes subscriptions through **VTPass**, and funds wallets through **Paystack**.
+> `https://paypoint-backend-aj52.onrender.com`). That API sells DStv, GOtv and StarTimes subscriptions through **VTPass**. For now, wallets are credited by an admin; card funding comes later.
 > To point the app at a different server, build with `--dart-define=API_BASE_URL=https://…`.
 
 A Flutter app for paying DStv, GOtv and StarTimes subscriptions. It is built from the Paypoint UI design (16 screens).
@@ -112,7 +112,7 @@ The logo is drawn in code, so it is sharp at any size. For the launcher icon, ex
 | Packages | `GET /api/cable/:provider/packages`, with live VTPass prices |
 | Pay | `POST /api/cable/pay`. The PIN is checked on the server and the wallet is debited; a failed payment is refunded automatically |
 | Processing payments | `POST /api/cable/requery/:id`. The result screen re-checks every 8 seconds |
-| Fund wallet | `POST /api/wallet/fund/initialize` opens the Paystack checkout, then `GET /api/wallet/fund/verify/:ref` confirms it |
+| Fund wallet | Shows the user's wallet number, credited by an admin with `POST /api/admin/wallet/credit` (card funding comes later) |
 | History, saved decoders, home | `GET /api/transactions` |
 
 The code is in `lib/services/api_client.dart` and `lib/state/app_state.dart`.
