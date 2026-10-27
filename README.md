@@ -1,5 +1,9 @@
 # Paypoint — Cable TV bill payment (Flutter)
 
+> **Live backend:** the app talks to the Paypoint API (`ALNATU2025/paypoint-backend`, deployed at
+> `https://paypoint-backend-aj52.onrender.com`). That API sells DStv, GOtv and StarTimes subscriptions through **VTPass**, and funds wallets through **Paystack**.
+> To point the app at a different server, build with `--dart-define=API_BASE_URL=https://…`.
+
 A Flutter app for paying DStv, GOtv and StarTimes subscriptions. It is built from the Paypoint UI design (16 screens).
 
 ## Screens
@@ -98,12 +102,22 @@ The logo is drawn in code, so it is sharp at any size. For the launcher icon, ex
 1. Download the `.ttf` files and put them in `assets/google_fonts/`.
 2. List that folder under `flutter: assets:` in `pubspec.yaml`.
 
-## Before going to production
+## How it connects to the backend
 
-1. **Prices.** The bouquet prices and channel counts in `lib/data/catalog.dart` are sample values. Load live prices from your aggregator instead.
-2. **Backend.** Write a real `BillingService` that calls your bill-payment API, then pass it in from `main.dart` with `AppState(billing: YourBillingService())`. The interface already covers customer lookup, the package list and payment.
-3. **Auth.** Wire the OTP send and verify calls into the `// call your OTP API here` spots in `sign_up_screen.dart` and `verify_screen.dart`.
-4. **Payments.** Card, bank and USSD flows should use your payment gateway's SDK. Check the PIN on the server; the mock accepts any 4 digits.
-5. **Receipts.** Add `share_plus` to the Share button. Add `pdf` and `printing` to the Download button. The spots are marked in `receipt_screen.dart`.
-6. **Persistence.** Store the session, saved decoders and history, for example with `shared_preferences`, `hive` or your API.
-7. **Branding.** DStv, GOtv and StarTimes appear as text on their brand colours. Use the official logos only if those providers allow it.
+| App | API |
+|---|---|
+| Sign up and log in | `POST /api/auth/register`, `/api/auth/login`. The token is stored with `shared_preferences` |
+| Create or change PIN | `PUT /api/auth/pin` |
+| Verify smartcard / IUC | `POST /api/cable/verify`, which returns the real customer name from VTPass |
+| Packages | `GET /api/cable/:provider/packages`, with live VTPass prices |
+| Pay | `POST /api/cable/pay`. The PIN is checked on the server and the wallet is debited; a failed payment is refunded automatically |
+| Processing payments | `POST /api/cable/requery/:id`. The result screen re-checks every 8 seconds |
+| Fund wallet | `POST /api/wallet/fund/initialize` opens the Paystack checkout, then `GET /api/wallet/fund/verify/:ref` confirms it |
+| History, saved decoders, home | `GET /api/transactions` |
+
+The code is in `lib/services/api_client.dart` and `lib/state/app_state.dart`.
+
+## Still to do before a store release
+1. **Signing.** Sign the release with your own keystore. The CI build uses the debug key.
+2. **Receipts.** Add `share_plus` to the Share button and `pdf` + `printing` to the Download button. The spots are marked in `receipt_screen.dart`.
+3. **Branding.** DStv, GOtv and StarTimes appear as text on their brand colours. Use the official logos only if those providers allow it.

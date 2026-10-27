@@ -22,15 +22,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
   TvProviderId? _filter; // null = all
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppScope.read(context).refreshHistory().catchError((_) {});
+    });
+  }
+
+  Future<void> _refresh() => AppScope.read(context).refresh().catchError((Object e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      });
+
+  @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final rows = s.transactions.where((t) => _filter == null || t.provider.id == _filter).toList();
+    // "All" also shows wallet top-ups; provider filters show only that provider.
+    final List<Object> rows = [
+      ...s.transactions.where((t) => _filter == null || t.provider.id == _filter),
+      if (_filter == null) ...s.fundings.where((f) => f.status == TxStatus.success),
+    ]..sort((a, b) => _dateOf(b).compareTo(_dateOf(a)));
 
     final filterIndex = _filter == null ? 0 : Catalog.providers.indexWhere((p) => p.id == _filter) + 1;
 
     return SafeArea(
       bottom: false,
-      child: ListView(
+      child: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, kFloatingNavClearance + 12),
         children: [
           const FadeSlideIn(
@@ -114,7 +133,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               SizedBox(height: 14),
                               Text('No transactions yet', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                               SizedBox(height: 4),
-                              Text('Payments for this provider will show up here.',
+                              Text('Your payments and top-ups will show up here.',
                                   style: TextStyle(color: AppColors.muted, fontSize: 13)),
                             ],
                           ),
@@ -126,7 +145,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         FadeSlideIn(
                           delay: Stagger.at(i + 3, stepMs: 60),
                           offset: const Offset(0, 18),
-                          child: _TxTile(tx: t),
+                          child: t is TvTransaction ? _TxTile(tx: t) : _FundingTile(tx: t as FundingTransaction),
                         ),
                         const SizedBox(height: 10),
                       ],
@@ -135,8 +154,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ],
       ),
+      ),
     );
   }
+
+  static DateTime _dateOf(Object o) => o is TvTransaction ? o.date : (o as FundingTransaction).date;
 }
 
 class _Stat extends StatelessWidget {
@@ -179,6 +201,8 @@ class _TxTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('${tx.provider.name} ${tx.package.name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 3),
                 Text(Fmt.shortDateTime(tx.date),
@@ -191,7 +215,52 @@ class _TxTile extends StatelessWidget {
             children: [
               Text(Fmt.naira(tx.amount), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              StatusPill(success: tx.success),
+              StatusPill(success: tx.success, pending: tx.pending),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FundingTile extends StatelessWidget {
+  const _FundingTile({required this.tx});
+  final FundingTransaction tx;
+
+  @override
+  Widget build(BuildContext context) {
+    final ok = tx.status == TxStatus.success;
+    return AppCard(
+      radius: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          IconTile(icon: Icons.south_west_rounded, size: 46, radius: 15, active: ok),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(tx.channel == 'admin' ? 'Wallet credit' : 'Wallet top-up',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 3),
+                Text(Fmt.shortDateTime(tx.date),
+                    style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('+${Fmt.naira(tx.amount)}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: ok ? AppColors.success : AppColors.ink,
+                  )),
+              const SizedBox(height: 4),
+              StatusPill(success: ok, pending: !ok, label: ok ? 'Received' : 'Awaiting payment'),
             ],
           ),
         ],

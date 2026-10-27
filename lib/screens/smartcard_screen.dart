@@ -6,7 +6,7 @@ import '../core/routes.dart';
 import '../core/theme.dart';
 import '../data/catalog.dart';
 import '../models/models.dart';
-import '../services/billing_service.dart';
+import '../services/api_client.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
 import '../widgets/motion.dart';
@@ -41,10 +41,13 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
       _checking = true;
       _error = null;
     });
+    // Warm the package list while the number is checked.
+    s.loadPackages(s.draft.provider).catchError((_) => <TvPackage>[]);
     try {
       await s.verifyCustomer();
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      HapticFeedback.lightImpact();
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -201,21 +204,24 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
                             ),
                           ),
                   ),
-                  if (customer != null) ...[
-                    const SizedBox(height: 10),
-                    SwitchRow(label: 'Save this decoder', value: d.saveDecoder, onChanged: s.setSaveDecoder),
-                  ],
                 ],
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: PrimaryButton(
-                label: 'Choose package',
-                trailingIcon: Icons.arrow_forward_rounded,
-                shimmer: customer != null,
-                onPressed: customer == null ? null : () => Navigator.of(context).pushNamed(Routes.packages),
-              ),
+              child: customer == null
+                  ? PrimaryButton(
+                      label: _checking ? 'Checking number…' : 'Verify number',
+                      icon: Icons.verified_user_outlined,
+                      loading: _checking,
+                      onPressed: d.number.length >= 8 && !_checking ? _lookup : null,
+                    )
+                  : PrimaryButton(
+                      label: 'Choose package',
+                      trailingIcon: Icons.arrow_forward_rounded,
+                      shimmer: true,
+                      onPressed: () => Navigator.of(context).pushNamed(Routes.packages),
+                    ),
             ),
           ],
         ),
@@ -230,7 +236,8 @@ class _VerifiedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final days = customer.dueDate.difference(DateTime.now()).inDays;
+    final due = customer.dueDate;
+    final days = due == null ? 999 : due.difference(DateTime.now()).inDays;
     return AppCard(
       border: Border.all(color: const Color(0xFFCDEFD8), width: 1.5),
       shadow: const [BoxShadow(color: Color(0x1A1E9A3E), blurRadius: 22, offset: Offset(0, 10))],
@@ -271,12 +278,12 @@ class _VerifiedCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _Kv(label: 'Current package', value: customer.currentPackage.name),
+                child: _Kv(label: 'Current package', value: customer.currentBouquet ?? '—'),
               ),
               Expanded(
                 child: _Kv(
                   label: 'Due date',
-                  value: Fmt.date(customer.dueDate),
+                  value: due == null ? '—' : Fmt.date(due),
                   color: days <= 5 ? AppColors.warning : AppColors.ink,
                 ),
               ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../core/routes.dart';
 import '../core/theme.dart';
+import '../services/api_client.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
 import '../widgets/motion.dart';
@@ -20,24 +21,41 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _email = TextEditingController();
+  final _password = TextEditingController();
   bool _submitting = false;
+  bool _obscure = true;
+  String? _error;
 
   @override
   void dispose() {
     _name.dispose();
     _phone.dispose();
     _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
   Future<void> _continue() async {
     if (!_form.currentState!.validate()) return;
-    setState(() => _submitting = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600)); // send OTP here
-    if (!mounted) return;
-    AppScope.read(context).setAccount(name: _name.text, phone: _phone.text, email: _email.text);
-    setState(() => _submitting = false);
-    Navigator.of(context).pushNamed(Routes.verify);
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await AppScope.read(context).register(
+        fullName: _name.text.trim(),
+        phone: _phone.text.trim(),
+        email: _email.text.trim(),
+        password: _password.text,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil(Routes.createPin, (_) => false);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override
@@ -80,7 +98,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.9)),
                             SizedBox(height: 8),
                             Text(
-                              "It takes less than a minute. We'll send a code to verify your number.",
+                              "It takes less than a minute. Then you'll set a 4-digit PIN to approve payments.",
                               style: TextStyle(fontSize: 15, height: 1.5, color: AppColors.body),
                             ),
                           ],
@@ -135,6 +153,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v) ? null : 'Enter a valid email';
                         },
                       )),
+                      const SizedBox(height: 18),
+                      FadeSlideIn(delay: Stagger.at(5), child: const _FieldLabel('Password')),
+                      FadeSlideIn(
+                        delay: Stagger.at(5),
+                        child: TextFormField(
+                          controller: _password,
+                          obscureText: _obscure,
+                          autofillHints: const [AutofillHints.newPassword],
+                          style: _inputStyle,
+                          decoration: InputDecoration(
+                            hintText: 'At least 6 characters',
+                            suffixIcon: IconButton(
+                              tooltip: _obscure ? 'Show password' : 'Hide password',
+                              icon: Icon(_obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+                              onPressed: () => setState(() => _obscure = !_obscure),
+                            ),
+                          ),
+                          validator: (v) => (v ?? '').length < 6 ? 'Use at least 6 characters' : null,
+                        ),
+                      ),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        child: _error == null
+                            ? const SizedBox(width: double.infinity)
+                            : Container(
+                                margin: const EdgeInsets.only(top: 16),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(color: AppColors.dangerBg, borderRadius: BorderRadius.circular(14)),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.danger),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(_error!,
+                                          style: const TextStyle(
+                                              color: AppColors.danger, fontWeight: FontWeight.w600, fontSize: 13)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ),
                       const SizedBox(height: 22),
                       const Text.rich(
                         TextSpan(children: [
@@ -151,12 +210,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(height: 24),
                       FadeSlideIn(
                         delay: Stagger.at(6),
-                        child: PrimaryButton(label: 'Continue', loading: _submitting, shimmer: true, onPressed: _continue),
+                        child: PrimaryButton(label: 'Create account', loading: _submitting, shimmer: true, onPressed: _continue),
                       ),
                       const SizedBox(height: 10),
                       Center(
                         child: TextButton(
-                          onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(Routes.main, (_) => false),
+                          onPressed: () => Navigator.of(context).pushReplacementNamed(Routes.login),
                           child: const Text.rich(
                             TextSpan(children: [
                               TextSpan(text: 'Already have an account? ', style: TextStyle(color: AppColors.body)),

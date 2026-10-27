@@ -7,14 +7,45 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
 import '../widgets/motion.dart';
-import 'main_shell.dart' show kFloatingNavClearance;
 import '../widgets/paypoint_logo.dart';
+import 'home_screen.dart' show showFundWalletSheet;
+import 'main_shell.dart' show kFloatingNavClearance;
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  void _soon(BuildContext context, String what) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$what — connect to your backend')));
+  void _help(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => const SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(24, 0, 24, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Help & support', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              SizedBox(height: 14),
+              _HelpItem(
+                q: 'My payment says "processing"',
+                a: 'The provider is still confirming it. Open the receipt from History and tap "Check status". '
+                    'If it fails, your wallet is refunded automatically.',
+              ),
+              _HelpItem(
+                q: 'My decoder is still off after paying',
+                a: 'Keep the decoder on and tuned to a channel for up to 15 minutes. '
+                    'For DStv/GOtv you can also clear the error code via the provider\'s self-service.',
+              ),
+              _HelpItem(
+                q: 'I funded my wallet but the balance did not change',
+                a: 'Open Fund wallet again and tap "I\'ve paid — check now", or pull down on Home to refresh.',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   void _decoders(BuildContext context, AppState s) {
     showModalBottomSheet<void>(
@@ -31,6 +62,12 @@ class ProfileScreen extends StatelessWidget {
             children: [
               const Text('Saved decoders', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
+              if (s.decoders.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text('No decoders yet. Pay for a subscription and it will appear here.',
+                      style: TextStyle(color: AppColors.body)),
+                ),
               for (final SavedDecoder d in s.decoders)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -113,17 +150,10 @@ class ProfileScreen extends StatelessWidget {
                             Text(s.fullName,
                                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
                             const SizedBox(height: 3),
-                            Text('${s.countryCode} ${s.phone}',
+                            Text(s.phone,
                                 style: const TextStyle(fontSize: 13, color: AppColors.onNavyMuted)),
                           ],
                         ),
-                      ),
-                      PrimaryButton(
-                        label: 'Edit',
-                        tone: ButtonTone.dark,
-                        expand: false,
-                        height: 40,
-                        onPressed: () => _soon(context, 'Edit profile'),
                       ),
                     ],
                   ),
@@ -141,7 +171,13 @@ class ProfileScreen extends StatelessWidget {
                           const VerticalDivider(color: AppColors.divider, width: 1),
                           Expanded(child: _Count(value: '${s.transactions.length}', label: 'Payments', icon: Icons.receipt_long_rounded)),
                           const VerticalDivider(color: AppColors.divider, width: 1),
-                          const Expanded(child: _Count(value: '1', label: 'Cards', icon: Icons.credit_card_rounded)),
+                          Expanded(
+                            child: _Count(
+                              value: '${s.fundings.where((f) => f.status == TxStatus.success).length}',
+                              label: 'Top-ups',
+                              icon: Icons.account_balance_wallet_rounded,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -164,19 +200,27 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     _MenuRow(icon: Icons.tv_rounded, label: 'Saved decoders', onTap: () => _decoders(context, s)),
-                    _MenuRow(icon: Icons.credit_card_rounded, label: 'Payment methods', onTap: () => _soon(context, 'Payment methods')),
+                    _MenuRow(
+                      icon: Icons.account_balance_wallet_rounded,
+                      label: 'Fund wallet',
+                      onTap: () => showFundWalletSheet(context),
+                    ),
                     _MenuRow(
                       icon: Icons.notifications_none_rounded,
                       label: 'Renewal reminders',
                       trailing: Switch(value: s.remindersOn, onChanged: s.setReminders),
                       onTap: () => s.setReminders(!s.remindersOn),
                     ),
-                    _MenuRow(icon: Icons.lock_outline_rounded, label: 'Security & PIN', onTap: () => _soon(context, 'Security & PIN')),
+                    _MenuRow(
+                      icon: Icons.lock_outline_rounded,
+                      label: 'Change transaction PIN',
+                      onTap: () => Navigator.of(context).pushNamed(Routes.changePin),
+                    ),
                     _MenuRow(
                       icon: Icons.help_outline_rounded,
                       label: 'Help & support',
                       last: true,
-                      onTap: () => _soon(context, 'Help & support'),
+                      onTap: () => _help(context),
                     ),
                   ],
                 ),
@@ -190,7 +234,11 @@ class ProfileScreen extends StatelessWidget {
                 icon: Icons.logout_rounded,
                 tone: ButtonTone.danger,
                 height: 52,
-                onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(Routes.signUp, (_) => false),
+                onPressed: () {
+                  final state = AppScope.read(context);
+                  Navigator.of(context).pushNamedAndRemoveUntil(Routes.login, (_) => false);
+                  state.logout();
+                },
               ),
               ),
               const SizedBox(height: 18),
@@ -256,4 +304,23 @@ class _MenuRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HelpItem extends StatelessWidget {
+  const _HelpItem({required this.q, required this.a});
+  final String q;
+  final String a;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(q, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+            const SizedBox(height: 4),
+            Text(a, style: const TextStyle(color: AppColors.body, fontSize: 13, height: 1.45)),
+          ],
+        ),
+      );
 }
