@@ -81,8 +81,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FadeSlideIn(
-                            child: const Row(
+                          const FadeSlideIn(
+                            child: Row(
                               children: [
                                 LogoTile(),
                                 SizedBox(width: 10),

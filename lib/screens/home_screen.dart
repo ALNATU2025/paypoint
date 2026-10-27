@@ -629,6 +629,7 @@ class _FundWalletSheetState extends State<_FundWalletSheet> with WidgetsBindingO
     final ref = _reference;
     if (ref == null) return;
     setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(widget.hostContext);
     try {
       final status = await AppScope.read(context).verifyFunding(ref);
       if (!mounted) return;
@@ -636,7 +637,7 @@ class _FundWalletSheetState extends State<_FundWalletSheet> with WidgetsBindingO
         case TxStatus.success:
           final amount = _amount ?? 0;
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(widget.hostContext).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(content: Text('${Fmt.naira(amount)} added to your wallet')),
           );
           return;
