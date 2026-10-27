@@ -625,28 +625,27 @@ class GradientTag extends StatelessWidget {
 }
 
 class StatusPill extends StatelessWidget {
-  const StatusPill({super.key, required this.success, this.label});
+  const StatusPill({super.key, required this.success, this.label, this.pending = false});
   final bool success;
+  final bool pending;
   final String? label;
 
   @override
   Widget build(BuildContext context) {
-    final color = success ? AppColors.success : AppColors.danger;
+    final (Color color, Color bg, String text) = pending
+        ? (AppColors.warning, AppColors.warningBg, 'Processing')
+        : success
+            ? (AppColors.success, AppColors.successBg, 'Successful')
+            : (AppColors.danger, AppColors.dangerBg, 'Failed · refunded');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: success ? AppColors.successBg : AppColors.dangerBg,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(width: 5, height: 5, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 5),
-          Text(
-            label ?? (success ? 'Successful' : 'Failed · refunded'),
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
-          ),
+          Text(label ?? text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
         ],
       ),
     );

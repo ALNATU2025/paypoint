@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../screens/login_screen.dart';
 import '../screens/main_shell.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/packages_screen.dart';
 import '../screens/payment_method_screen.dart';
 import '../screens/pin_screen.dart';
+import '../screens/pin_setup_screen.dart';
 import '../screens/receipt_screen.dart';
 import '../screens/review_screen.dart';
 import '../screens/sign_up_screen.dart';
 import '../screens/smartcard_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/success_screen.dart';
-import '../screens/verify_screen.dart';
 
 class Routes {
   Routes._();
@@ -20,7 +21,9 @@ class Routes {
   static const splash = '/';
   static const onboarding = '/onboarding';
   static const signUp = '/sign-up';
-  static const verify = '/verify';
+  static const login = '/login';
+  static const createPin = '/create-pin';
+  static const changePin = '/change-pin';
   static const main = '/main';
   static const smartcard = '/pay/smartcard';
   static const packages = '/pay/packages';
@@ -37,8 +40,12 @@ class Routes {
         return const OnboardingScreen();
       case signUp:
         return const SignUpScreen();
-      case verify:
-        return const VerifyScreen();
+      case login:
+        return const LoginScreen();
+      case createPin:
+        return const PinSetupScreen();
+      case changePin:
+        return const PinSetupScreen(change: true);
       case main:
         return MainShell(initialTab: (args as int?) ?? 0);
       case smartcard:

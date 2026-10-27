@@ -12,12 +12,7 @@ import 'home_screen.dart' show showFundWalletSheet;
 class PaymentMethodScreen extends StatelessWidget {
   const PaymentMethodScreen({super.key});
 
-  String _subtitle(PaymentMethod m, AppState s) => switch (m) {
-        PaymentMethod.wallet => 'Balance ${Fmt.naira(s.walletBalance, kobo: true)}',
-        PaymentMethod.card => 'Visa •••• 4821',
-        PaymentMethod.bank => 'Pay from any bank app',
-        PaymentMethod.ussd => 'No internet needed',
-      };
+  String _subtitle(PaymentMethod m, AppState s) => 'Balance ${Fmt.naira(s.walletBalance, kobo: true)}';
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +77,7 @@ class PaymentMethodScreen extends StatelessWidget {
                         onTap: () => s.setMethod(m),
                         leading: IconTile(icon: m.icon, active: d.method == m),
                         title: m.title,
-                        badge: m == PaymentMethod.wallet ? 'Instant' : null,
+                        badge: 'Instant',
                         subtitle: _subtitle(m, s),
                       ),
                     ),
@@ -107,17 +102,33 @@ class PaymentMethodScreen extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: 4),
-                  OutlinedButton.icon(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Card linking is handled by your payment gateway SDK.')),
-                    ),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add new card', style: TextStyle(fontWeight: FontWeight.w700)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.blue,
-                      minimumSize: const Size.fromHeight(52),
-                      side: const BorderSide(color: Color(0xFFB9C4E4), width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  FadeSlideIn(
+                    delay: Stagger.at(4),
+                    child: AppCard(
+                      onTap: () => showFundWalletSheet(context),
+                      radius: 18,
+                      padding: const EdgeInsets.all(14),
+                      border: Border.all(color: const Color(0xFFDCE3F5)),
+                      shadow: null,
+                      child: const Row(
+                        children: [
+                          IconTile(icon: Icons.credit_card_rounded, size: 42, radius: 13, iconSize: 20),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Card, bank transfer or USSD',
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                                SizedBox(height: 2),
+                                Text('Top up your wallet securely with Paystack',
+                                    style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.add_circle_outline_rounded, color: AppColors.blue),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -132,7 +143,7 @@ class PaymentMethodScreen extends StatelessWidget {
                     children: [
                       Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.muted),
                       SizedBox(width: 6),
-                      Text('Payments are encrypted end to end',
+                      Text("You'll confirm with your transaction PIN",
                           style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
                     ],
                   ),

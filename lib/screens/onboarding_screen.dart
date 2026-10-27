@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../core/routes.dart';
 import '../core/theme.dart';
 import '../data/catalog.dart';
+import '../state/app_state.dart';
 import '../widgets/common.dart';
 import '../widgets/motion.dart';
 import '../widgets/paypoint_logo.dart';
@@ -60,7 +61,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
-  void _finish() => Navigator.of(context).pushReplacementNamed(Routes.signUp);
+  void _finish() {
+    AppScope.read(context).markOnboardingSeen();
+    Navigator.of(context).pushReplacementNamed(Routes.signUp);
+  }
 
   void _next() {
     if (_page == _slides.length - 1) return _finish();

@@ -42,8 +42,21 @@ class _MainShellState extends State<MainShell> {
     Navigator.of(context).pushNamed(Routes.smartcard);
   }
 
+  bool _redirecting = false;
+
   @override
   Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    if (!s.loggedIn && !_redirecting && (ModalRoute.of(context)?.isCurrent ?? false)) {
+      _redirecting = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(Routes.login, (_) => false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Your session has ended. Please log in again.')),
+        );
+      });
+    }
     final pages = [
       HomeScreen(onOpenHistory: () => go(1), onOpenProfile: () => go(2)),
       const HistoryScreen(),

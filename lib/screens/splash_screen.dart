@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../core/routes.dart';
 import '../core/theme.dart';
+import '../state/app_state.dart';
 import '../widgets/motion.dart';
 import '../widgets/paypoint_logo.dart';
 
@@ -24,22 +25,39 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       AnimationController(vsync: this, duration: const Duration(milliseconds: 2900))..forward();
   Timer? _timer;
   bool _leaving = false;
+  bool _minTimeDone = false;
+  Future<bool>? _session;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 3100), _next);
+    _timer = Timer(const Duration(milliseconds: 3100), () {
+      _minTimeDone = true;
+      _next();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _session = AppScope.read(context).init();
+      _session!.then((_) => _next(), onError: (_) => _next());
+    });
   }
 
-  void _next() {
-    if (!mounted || _leaving) return;
+  /// Leaves once the intro has played and the saved session has been checked.
+  Future<void> _next() async {
+    if (!mounted || _leaving || !_minTimeDone || _session == null) return;
     _leaving = true;
     _timer?.cancel();
+    final loggedIn = await _session!.catchError((_) => false);
+    if (!mounted) return;
+    final s = AppScope.read(context);
+    final target = loggedIn
+        ? (s.hasPin ? Routes.main : Routes.createPin)
+        : (s.onboardingSeen ? Routes.login : Routes.onboarding);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
-        settings: const RouteSettings(name: Routes.onboarding),
+        settings: RouteSettings(name: target),
         transitionDuration: const Duration(milliseconds: 700),
-        pageBuilder: (_, __, ___) => Routes.build(Routes.onboarding),
+        pageBuilder: (_, __, ___) => Routes.build(target),
         transitionsBuilder: (_, a, __, child) {
           final c = CurvedAnimation(parent: a, curve: Curves.easeOutCubic);
           return FadeTransition(
@@ -70,7 +88,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         backgroundColor: AppColors.deep,
         body: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: _next,
+          onTap: () {
+            _minTimeDone = true;
+            _next();
+          },
           child: AuroraBackground(
             intensity: 0.5,
             child: Stack(

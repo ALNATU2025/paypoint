@@ -21,8 +21,8 @@ class ReviewScreen extends StatelessWidget {
       ('Account name', d.customer?.accountName ?? '—', null),
       (d.provider.idLabel.replaceAll(' number', ''), Fmt.smartcard(d.number), null),
       ('Package', '${pkg.name} · ${d.months} mo', null),
-      ('New expiry', Fmt.date(d.newExpiry), null),
-      ('Service fee', 'Free', AppColors.success),
+      ('Paid from', 'Wallet · ${Fmt.naira(s.walletBalance, kobo: true)}', null),
+      ('Service fee', d.serviceFee == 0 ? 'Free' : Fmt.naira(d.serviceFee), d.serviceFee == 0 ? AppColors.success : null),
     ];
 
     return Scaffold(

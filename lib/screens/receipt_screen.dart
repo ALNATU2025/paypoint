@@ -67,14 +67,19 @@ class ReceiptScreen extends StatelessWidget {
                                   height: 54,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    gradient: tx.success ? AppGradients.success : null,
-                                    color: tx.success ? null : AppColors.danger,
+                                    gradient: tx.success
+                                        ? AppGradients.success
+                                        : tx.pending
+                                            ? AppGradients.warm
+                                            : null,
+                                    color: tx.failed ? AppColors.danger : null,
                                     boxShadow: const [BoxShadow(color: Color(0x401E9A3E), blurRadius: 16, offset: Offset(0, 6))],
                                   ),
                                   alignment: Alignment.center,
                                   child: tx.success
                                       ? const DrawnCheck(size: 32, strokeWidth: 4, delay: Duration(milliseconds: 500))
-                                      : const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                                      : Icon(tx.pending ? Icons.schedule_rounded : Icons.close_rounded,
+                                          color: Colors.white, size: 28),
                                 ),
                                 const SizedBox(height: 14),
                                 AnimatedAmount(
@@ -83,7 +88,7 @@ class ReceiptScreen extends StatelessWidget {
                                   style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -1),
                                 ),
                                 const SizedBox(height: 8),
-                                StatusPill(success: tx.success),
+                                StatusPill(success: tx.success, pending: tx.pending),
                               ],
                             ),
                           ),
@@ -100,7 +105,7 @@ class ReceiptScreen extends StatelessWidget {
                                   padding: 10,
                                   fontSize: 13,
                                 ),
-                                InfoRow(label: 'Account name', value: tx.accountName, divider: false, padding: 10, fontSize: 13),
+                                InfoRow(label: 'Account name', value: tx.accountName.isEmpty ? '—' : tx.accountName, divider: false, padding: 10, fontSize: 13),
                                 InfoRow(
                                   label: tx.provider.idLabel.replaceAll(' number', ''),
                                   value: Fmt.smartcard(tx.smartcard),
@@ -118,7 +123,7 @@ class ReceiptScreen extends StatelessWidget {
                                 ),
                                 InfoRow(
                                   label: 'Active until',
-                                  value: tx.success ? Fmt.date(tx.activeUntil) : '—',
+                                  value: tx.success ? '~ ${Fmt.date(tx.activeUntil)}' : '—',
                                   divider: false,
                                   padding: 10,
                                   fontSize: 13,

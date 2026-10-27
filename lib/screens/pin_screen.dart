@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import '../core/formatters.dart';
 import '../core/routes.dart';
 import '../core/theme.dart';
+import '../models/models.dart';
+import '../services/api_client.dart';
 import '../state/app_state.dart';
 import '../widgets/common.dart';
 import '../widgets/motion.dart';
@@ -61,24 +63,39 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
   Future<void> _submit() async {
     setState(() => _busy = true);
     _spin.repeat();
+    final state = AppScope.read(context);
     try {
-      final tx = await AppScope.read(context).pay(_pin);
+      final result = await state.pay(_pin);
       if (!mounted) return;
       HapticFeedback.mediumImpact();
       Navigator.of(context).pushNamedAndRemoveUntil(
         Routes.success,
         ModalRoute.withName(Routes.main),
-        arguments: tx,
+        arguments: result.transaction,
       );
-    } catch (e) {
+    } on ApiException catch (e) {
       if (!mounted) return;
       _spin.stop();
       HapticFeedback.heavyImpact();
+      if (e.code == 'PIN_NOT_SET') {
+        Navigator.of(context).pushReplacementNamed(Routes.createPin);
+        return;
+      }
+      // A failed payment comes back with the (refunded) transaction: show it.
+      if (e.data is TvTransaction) {
+        final tx = e.data! as TvTransaction;
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          Routes.success,
+          ModalRoute.withName(Routes.main),
+          arguments: tx,
+        );
+        return;
+      }
       _shake.forward(from: 0);
       setState(() {
         _busy = false;
         _pin = '';
-        _error = e.toString();
+        _error = e.message;
       });
     }
   }
