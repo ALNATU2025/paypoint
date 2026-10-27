@@ -200,7 +200,7 @@ class _NavItem extends StatelessWidget {
                       fontWeight: active ? FontWeight.w800 : FontWeight.w600,
                       color: color,
                     ),
-                child: Text(label, excludeFromSemantics: true),
+                child: ExcludeSemantics(child: Text(label)),
               ),
             ],
           ),
