@@ -29,6 +29,13 @@ void main() {
       expect(TvPackage.cleanName('GOtv Max N8,500', 'GOtv'), 'Max');
       expect(TvPackage.cleanName('Classic - 5300 Naira', 'StarTimes'), 'Classic');
       expect(TvPackage.cleanName('DStv Compact + Extra View', 'DStv'), 'Compact + Extra View');
+      expect(TvPackage.cleanName('DStv  Compact N7900', 'DStv'), 'Compact');
+      expect(TvPackage.cleanName('DStv French 11 N3,260', 'DStv'), 'French 11');
+      expect(TvPackage.cleanName('DStv Asian Bouquet E36 N12,400', 'DStv'), 'Asian Bouquet E36');
+      expect(TvPackage.cleanName('Showmax Standalone - N3,500', 'DStv'), 'Showmax Standalone');
+      expect(TvPackage.cleanName('GOtv Lite (3 Months) N1,080', 'GOtv'), 'Lite (3 Months)');
+      expect(TvPackage.cleanName('Nova - 900 Naira - 1 Month', 'StarTimes'), 'Nova · 1 Month');
+      expect(TvPackage.cleanName('Classic - 1200 Naira - 1 Week ', 'StarTimes'), 'Classic · 1 Week');
     });
 
     test('transaction parses from the API', () {
@@ -140,6 +147,45 @@ void main() {
       expect(result.transaction.success, isTrue);
       expect(s.walletBalance, 1000);
       expect(s.decoders.single.number, '7012345678');
+    });
+
+    test('renewal sends mode renew without a package code', () async {
+      final s = build((r) {
+        if (r.url.path == '/api/cable/pay') {
+          return {
+            'success': true,
+            'data': {
+              'balance': 0,
+              'transaction': {
+                'id': 'tx3',
+                'status': 'success',
+                'amount': 7900,
+                'serviceID': 'dstv',
+                'billersCode': '1212121212',
+                'packageName': 'DStv Compact (renewal)',
+                'months': 1,
+              },
+            },
+          };
+        }
+        return {'success': true, 'data': <dynamic>[]};
+      });
+      s.user = const AppUser(id: 'u1', fullName: 'Ada', phone: '0803', email: '', balance: 7900, hasPin: true);
+      s.startFlow(Catalog.dstv);
+      s.setNumber('1212121212');
+      expect(s.canRenew, isFalse);
+      s.draft.customer = const CustomerLookup(accountName: 'TEST', currentBouquet: 'DStv Compact', renewalAmount: 7900);
+      expect(s.canRenew, isTrue);
+      s.selectRenewal();
+      expect(s.draft.total, 7900);
+      s.setMonths(3);
+      expect(s.draft.months, 1, reason: 'renewal is always one period');
+
+      await s.pay('1234');
+      final body = jsonDecode(calls.last.body) as Map<String, dynamic>;
+      expect(body['mode'], 'renew');
+      expect(body.containsKey('variationCode'), isFalse);
+      expect(body.containsKey('months'), isFalse);
     });
 
     test('failed payment throws with the refunded transaction', () async {

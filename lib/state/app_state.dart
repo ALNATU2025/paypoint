@@ -7,6 +7,9 @@ import '../data/catalog.dart';
 import '../models/models.dart';
 import '../services/api_client.dart';
 
+/// Marker id for "renew current bouquet" in [PaymentDraft.package].
+const kRenewalPackageId = '__renew__';
+
 /// The in-progress subscription the user is building across the pay flow.
 class PaymentDraft {
   TvProvider provider = Catalog.dstv;
@@ -15,6 +18,10 @@ class PaymentDraft {
   TvPackage? package;
   int months = 1;
   PaymentMethod method = PaymentMethod.wallet;
+
+  /// Renew the current bouquet at the provider's renewal price
+  /// (DStv / GOtv), instead of buying a specific package.
+  bool renew = false;
 
   /// Flat fee the backend adds per payment (from the packages response).
   int serviceFee = 0;
@@ -281,6 +288,7 @@ class AppState extends ChangeNotifier {
       ..provider = p
       ..customer = null
       ..package = null
+      ..renew = false
       ..months = 1
       ..number = '';
     notifyListeners();
@@ -291,7 +299,8 @@ class AppState extends ChangeNotifier {
     if (digits == draft.number) return;
     draft
       ..number = digits
-      ..customer = null;
+      ..customer = null
+      ..renew = false;
     notifyListeners();
   }
 
@@ -328,15 +337,35 @@ class AppState extends ChangeNotifier {
   /// Flat service fee for a provider (reported with its packages).
   int feeFor(TvProvider p) => _fees[p.id] ?? 0;
 
+  /// True when VTPass offered a renewal price for the verified decoder.
+  bool get canRenew =>
+      draft.provider.supportsMonths && (draft.customer?.renewalAmount ?? 0) > 0;
+
+  void selectRenewal() {
+    final c = draft.customer;
+    if (c == null || !canRenew) return;
+    draft
+      ..renew = true
+      ..months = 1
+      ..serviceFee = feeFor(draft.provider)
+      ..package = TvPackage(
+        id: kRenewalPackageId,
+        name: c.currentBouquet?.isNotEmpty == true ? c.currentBouquet! : 'Current bouquet',
+        monthlyPrice: c.renewalAmount!.round(),
+      );
+    notifyListeners();
+  }
+
   void setPackage(TvPackage p) {
     draft
+      ..renew = false
       ..package = p
       ..serviceFee = feeFor(draft.provider);
     notifyListeners();
   }
 
   void setMonths(int m) {
-    draft.months = draft.provider.supportsMonths ? m : 1;
+    draft.months = draft.provider.supportsMonths && !draft.renew ? m : 1;
     notifyListeners();
   }
 
@@ -354,9 +383,8 @@ class AppState extends ChangeNotifier {
     final body = await api.postRaw('/api/cable/pay', {
       'serviceID': d.provider.serviceID,
       'billersCode': d.number,
-      'variationCode': pkg.id,
-      'months': d.months,
       'pin': pin,
+      if (d.renew) 'mode': 'renew' else ...{'variationCode': pkg.id, 'months': d.months},
       if (d.customer != null) 'customerName': d.customer!.accountName,
     });
     final data = body['data'] as Map<String, dynamic>?;

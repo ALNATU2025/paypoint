@@ -35,7 +35,15 @@ class TvPackage {
   /// "DStv Compact N19,000" → "Compact"; "Classic - 5300 Naira" → "Classic".
   static String cleanName(String raw, String providerName) {
     var n = raw.trim();
-    n = n.replaceAll(RegExp(r'\s*[-–:]?\s*(N|₦|NGN)?\s?\d[\d,]*(\.\d+)?\s*(Naira)?\s*$', caseSensitive: false), '');
+    // StarTimes: "Nova - 900 Naira - 1 Month" → "Nova · 1 Month"
+    n = n.replaceAll(
+      RegExp(r'\s*-\s*(N|₦)?[\d,]+(\.\d+)?\s*Naira\s*-\s*', caseSensitive: false),
+      ' · ',
+    );
+    // Trailing price, only when marked as money so "French 11" / "E36" survive:
+    // "DStv Compact N19,000", "Showmax Standalone - N3,500", "Classic - 5300 Naira"
+    n = n.replaceAll(RegExp(r'\s*[-–:]?\s*(N|₦|NGN)\s?\d[\d,]*(\.\d+)?\s*$'), '');
+    n = n.replaceAll(RegExp(r'\s*[-–:]?\s*\d[\d,]*(\.\d+)?\s*Naira\s*$', caseSensitive: false), '');
     n = n.replaceFirst(RegExp('^${RegExp.escape(providerName)}\\s+', caseSensitive: false), '');
     n = n.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
     return n.isEmpty ? raw.trim() : n;
