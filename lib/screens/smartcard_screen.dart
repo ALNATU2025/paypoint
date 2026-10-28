@@ -200,7 +200,12 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
                               key: ValueKey(customer.accountName + d.number),
                               scaleFrom: 0.94,
                               curve: Curves.easeOutBack,
-                              child: _VerifiedCard(customer: customer),
+                              child: _VerifiedCard(
+                                customer: customer,
+                                // Only DStv / GOtv return a renewal price.
+                                renewAmount: s.canRenew ? customer.renewalAmount : null,
+                                fee: s.feeFor(p),
+                              ),
                             ),
                           ),
                   ),
@@ -216,12 +221,38 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
                       loading: _checking,
                       onPressed: d.number.length >= 8 && !_checking ? _lookup : null,
                     )
-                  : PrimaryButton(
-                      label: 'Choose package',
-                      trailingIcon: Icons.arrow_forward_rounded,
-                      shimmer: true,
-                      onPressed: () => Navigator.of(context).pushNamed(Routes.packages),
-                    ),
+                  : s.canRenew
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PrimaryButton(
+                              label: 'Renew · ${_money(customer.renewalAmount! + s.feeFor(p))}',
+                              icon: Icons.autorenew_rounded,
+                              shimmer: true,
+                              onPressed: () {
+                                s.selectRenewal();
+                                Navigator.of(context).pushNamed(Routes.review);
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                            PrimaryButton(
+                              label: 'Change package',
+                              icon: Icons.swap_horiz_rounded,
+                              tone: ButtonTone.soft,
+                              height: 50,
+                              onPressed: () {
+                                s.chooseNewPackage();
+                                Navigator.of(context).pushNamed(Routes.packages);
+                              },
+                            ),
+                          ],
+                        )
+                      : PrimaryButton(
+                          label: 'Choose package',
+                          trailingIcon: Icons.arrow_forward_rounded,
+                          shimmer: true,
+                          onPressed: () => Navigator.of(context).pushNamed(Routes.packages),
+                        ),
             ),
           ],
         ),
@@ -230,9 +261,16 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
   }
 }
 
+/// Naira with kobo only when there are kobo (VTPass renewal amounts can have them).
+String _money(num v) => Fmt.naira(v, kobo: v != v.roundToDouble());
+
 class _VerifiedCard extends StatelessWidget {
-  const _VerifiedCard({required this.customer});
+  const _VerifiedCard({required this.customer, this.renewAmount, this.fee = 0});
   final CustomerLookup customer;
+
+  /// Amount due to renew the current bouquet; null when renewal isn't offered.
+  final num? renewAmount;
+  final int fee;
 
   @override
   Widget build(BuildContext context) {
@@ -289,6 +327,53 @@ class _VerifiedCard extends StatelessWidget {
               ),
             ],
           ),
+          if (customer.status != null && customer.status!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _Kv(
+                label: 'Status',
+                value: customer.status!.toUpperCase(),
+                color: customer.status!.toLowerCase() == 'active' ? AppColors.success : AppColors.warning,
+              ),
+            ),
+          ],
+          if (renewAmount != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: AppGradients.hero,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(days < 0 ? 'Amount due to reconnect' : 'Amount due to renew',
+                            style: const TextStyle(color: AppColors.onNavyMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        AnimatedAmount(
+                          value: renewAmount!.toDouble(),
+                          duration: const Duration(milliseconds: 900),
+                          format: _money,
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                        ),
+                        if (fee > 0)
+                          Text('+ ${Fmt.naira(fee)} service fee',
+                              style: const TextStyle(color: AppColors.onNavyFaint, fontSize: 11.5)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.autorenew_rounded, color: Colors.white, size: 28),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
