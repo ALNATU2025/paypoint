@@ -803,6 +803,7 @@ class _WalletsTabState extends State<_WalletsTab> {
                           RoundIconButton(
                             icon: Icons.remove_rounded,
                             onDark: true,
+                            tooltip: 'Correct balance',
                             onPressed: _busy || w.paypointBalance <= 0 ? null : () => _fundPool(credit: false),
                           ),
                         ],
@@ -854,7 +855,8 @@ class _WalletsTabState extends State<_WalletsTab> {
               index: _filter.clamp(0, filters.length - 1),
               onChanged: (i) {
                 setState(() => _filter = i);
-                live.refresh();
+                // Reload with the new filter once the rebuild has happened.
+                WidgetsBinding.instance.addPostFrameCallback((_) => _liveKey.currentState?._fetch());
               },
             ),
             const SizedBox(height: 12),
@@ -947,14 +949,12 @@ class _MoneyDialog extends StatefulWidget {
     required this.confirm,
     this.danger = false,
     this.noteHint = 'Note',
-    this.max,
   });
   final String title;
   final String subtitle;
   final String confirm;
   final bool danger;
   final String noteHint;
-  final double? max;
 
   @override
   State<_MoneyDialog> createState() => _MoneyDialogState();
@@ -974,7 +974,6 @@ class _MoneyDialogState extends State<_MoneyDialog> {
   @override
   Widget build(BuildContext context) {
     final value = double.tryParse(_amount.text) ?? 0;
-    final over = widget.max != null && value > widget.max!;
     return AlertDialog(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
@@ -996,7 +995,6 @@ class _MoneyDialogState extends State<_MoneyDialog> {
             decoration: InputDecoration(
               prefixText: '₦ ',
               hintText: '0',
-              errorText: over ? 'More than ${Fmt.naira(widget.max!, kobo: true)}' : null,
             ),
           ),
           const SizedBox(height: 12),
@@ -1007,7 +1005,7 @@ class _MoneyDialogState extends State<_MoneyDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: widget.danger ? AppColors.danger : AppColors.blue),
-          onPressed: value > 0 && !over ? () => Navigator.pop(context, (value, _note.text.trim())) : null,
+          onPressed: value > 0 ? () => Navigator.pop(context, (value, _note.text.trim())) : null,
           child: Text('${widget.confirm} ${value > 0 ? Fmt.naira(value, kobo: value != value.roundToDouble()) : ''}'),
         ),
       ],
