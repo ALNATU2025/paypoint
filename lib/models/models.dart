@@ -107,6 +107,7 @@ class AppUser {
     required this.email,
     required this.balance,
     required this.hasPin,
+    this.isAdmin = false,
   });
 
   final String id;
@@ -116,6 +117,9 @@ class AppUser {
   final double balance;
   final bool hasPin;
 
+  /// Can open the admin dashboard (email listed in the backend's ADMIN_EMAILS).
+  final bool isAdmin;
+
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
         id: j['id'] as String,
         fullName: (j['fullName'] ?? '') as String,
@@ -123,6 +127,7 @@ class AppUser {
         email: (j['email'] ?? '') as String,
         balance: (j['balance'] as num? ?? 0).toDouble(),
         hasPin: j['hasPin'] == true,
+        isAdmin: j['isAdmin'] == true,
       );
 
   AppUser copyWith({double? balance, bool? hasPin}) => AppUser(
@@ -132,6 +137,7 @@ class AppUser {
         email: email,
         balance: balance ?? this.balance,
         hasPin: hasPin ?? this.hasPin,
+        isAdmin: isAdmin,
       );
 }
 

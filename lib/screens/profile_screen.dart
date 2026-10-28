@@ -201,6 +201,13 @@ class ProfileScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Column(
                   children: [
+                    if (s.isAdmin)
+                      _MenuRow(
+                        icon: Icons.admin_panel_settings_rounded,
+                        label: 'Admin dashboard',
+                        highlight: true,
+                        onTap: () => Navigator.of(context).pushNamed(Routes.admin),
+                      ),
                     _MenuRow(icon: Icons.tv_rounded, label: 'Saved decoders', onTap: () => _decoders(context, s)),
                     _MenuRow(
                       icon: Icons.account_balance_wallet_rounded,
@@ -279,12 +286,20 @@ class _Count extends StatelessWidget {
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.icon, required this.label, required this.onTap, this.trailing, this.last = false});
+  const _MenuRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.trailing,
+    this.last = false,
+    this.highlight = false,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final Widget? trailing;
   final bool last;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
@@ -297,7 +312,7 @@ class _MenuRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            IconTile(icon: icon, size: 40, radius: 13, iconSize: 20),
+            IconTile(icon: icon, size: 40, radius: 13, iconSize: 20, active: highlight),
             const SizedBox(width: 14),
             Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
             trailing ?? const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
