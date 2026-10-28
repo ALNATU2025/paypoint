@@ -78,6 +78,7 @@ class AppState extends ChangeNotifier {
   String get email => user?.email ?? '';
   double get walletBalance => user?.balance ?? 0;
   bool get hasPin => user?.hasPin ?? false;
+  bool get isAdmin => user?.isAdmin ?? false;
   bool get walletCanCover => walletBalance >= draft.total;
 
   /// Decoders paid for before: the latest successful payment per number.
@@ -209,6 +210,7 @@ class AppState extends ChangeNotifier {
         'email': u.email,
         'balance': u.balance,
         'hasPin': u.hasPin,
+        'isAdmin': u.isAdmin,
       }),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../screens/admin_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/main_shell.dart';
 import '../screens/onboarding_screen.dart';
@@ -32,6 +33,7 @@ class Routes {
   static const pin = '/pay/pin';
   static const success = '/pay/success';
   static const receipt = '/receipt';
+  static const admin = '/admin';
 
   /// The page widget for a route name.
   static Widget build(String? name, [Object? args]) {
@@ -42,6 +44,8 @@ class Routes {
         return const SignUpScreen();
       case login:
         return const LoginScreen();
+      case admin:
+        return const AdminScreen();
       case createPin:
         return const PinSetupScreen();
       case changePin:

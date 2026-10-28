@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:paypoint/core/formatters.dart';
 import 'package:paypoint/data/catalog.dart';
 import 'package:paypoint/models/models.dart';
+import 'package:paypoint/services/admin_api.dart';
 import 'package:paypoint/services/api_client.dart';
 import 'package:paypoint/state/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -59,6 +60,42 @@ void main() {
       expect(tx.package.monthlyPrice, 19000);
       expect(tx.success, isTrue);
       expect(tx.activeUntil.difference(tx.date).inDays, 60);
+    });
+  });
+
+  group('Admin', () {
+    test('isAdmin comes from the API user', () {
+      final u = AppUser.fromJson({'id': '1', 'fullName': 'A', 'email': 'payonpointng@gmail.com', 'isAdmin': true});
+      expect(u.isAdmin, isTrue);
+      expect(u.copyWith(balance: 5).isAdmin, isTrue);
+      expect(AppUser.fromJson({'id': '2'}).isAdmin, isFalse);
+    });
+
+    test('stats parse', () {
+      final st = AdminStats({
+        'users': 12,
+        'newUsersToday': 2,
+        'walletBalances': 5000.5,
+        'salesToday': {'amount': 19000, 'count': 2},
+        'salesAll': {'amount': 80000, 'count': 9},
+        'pending': 1,
+        'failedToday': 0,
+        'byProvider': {
+          'dstv': {'amount': 60000, 'count': 5},
+        },
+        'vtpass': {'mode': 'live', 'configured': true, 'balance': null},
+      });
+      expect(st.users, 12);
+      expect(st.salesTodayAmount, 19000);
+      expect(st.byProvider['dstv'], (60000.0, 5));
+      expect(st.vtpassBalance, isNull);
+      expect(st.vtpassConfigured, isTrue);
+    });
+
+    test('transaction titles', () {
+      expect(AdminTx({'id': '1', 'type': 'cable', 'serviceID': 'gotv', 'packageName': 'GOtv Max N8,500'}).title, 'GOtv Max');
+      expect(AdminTx({'id': '2', 'type': 'funding', 'description': 'Debit: correction'}).title, 'Wallet debit');
+      expect(AdminTx({'id': '3', 'type': 'funding', 'description': 'Wallet credit'}).title, 'Wallet credit');
     });
   });
 
