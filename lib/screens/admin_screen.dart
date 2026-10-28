@@ -558,6 +558,7 @@ class _UserSheetState extends State<_UserSheet> {
   void _reload() => setState(() => _future = widget.api.user(widget.userId));
 
   Future<void> _adjust(AdminUser u, {required bool credit}) async {
+    final messenger = ScaffoldMessenger.of(widget.hostContext);
     final result = await showDialog<(double, String)>(
       context: context,
       builder: (_) => _AmountDialog(credit: credit, user: u),
@@ -569,28 +570,29 @@ class _UserSheetState extends State<_UserSheet> {
           ? await widget.api.credit(u.id, result.$1, result.$2)
           : await widget.api.debit(u.id, result.$1, result.$2);
       HapticFeedback.mediumImpact();
-      if (mounted) {
-        _toast(widget.hostContext,
-            '${credit ? 'Credited' : 'Debited'} ${Fmt.naira(result.$1.round())}. New balance ${Fmt.naira(updated.balance.round())}');
-        _reload();
-      }
+      messenger.showSnackBar(SnackBar(
+        content: Text(
+          '${credit ? 'Credited' : 'Debited'} ${Fmt.naira(result.$1.round())}. '
+          'New balance ${Fmt.naira(updated.balance.round())}',
+        ),
+      ));
+      if (mounted) _reload();
     } on ApiException catch (e) {
-      if (mounted) _toast(widget.hostContext, e.message);
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _unlock(AdminUser u) async {
+    final messenger = ScaffoldMessenger.of(widget.hostContext);
     setState(() => _busy = true);
     try {
       await widget.api.unlockPin(u.id);
-      if (mounted) {
-        _toast(widget.hostContext, 'PIN unlocked for ${u.fullName}');
-        _reload();
-      }
+      messenger.showSnackBar(SnackBar(content: Text('PIN unlocked for ${u.fullName}')));
+      if (mounted) _reload();
     } on ApiException catch (e) {
-      if (mounted) _toast(widget.hostContext, e.message);
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
