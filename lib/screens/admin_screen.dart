@@ -992,7 +992,7 @@ class _MoneyDialogState extends State<_MoneyDialog> {
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
             onChanged: (_) => setState(() {}),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               prefixText: '₦ ',
               hintText: '0',
             ),
