@@ -341,6 +341,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Leave renewal mode to pick a different package.
+  void chooseNewPackage() {
+    if (!draft.renew) return;
+    draft
+      ..renew = false
+      ..package = null;
+    notifyListeners();
+  }
+
   void setPackage(TvPackage p) {
     draft
       ..renew = false

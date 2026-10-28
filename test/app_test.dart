@@ -258,6 +258,10 @@ void main() {
       s.draft.customer = const CustomerLookup(accountName: 'TEST', currentBouquet: 'DStv Compact', renewalAmount: 7900);
       expect(s.canRenew, isTrue);
       s.selectRenewal();
+      s.chooseNewPackage();
+      expect(s.draft.renew, isFalse, reason: 'Change package leaves renewal mode');
+      expect(s.draft.package, isNull);
+      s.selectRenewal();
       expect(s.draft.total, 7900);
       s.setMonths(3);
       expect(s.draft.months, 1, reason: 'renewal is always one period');
