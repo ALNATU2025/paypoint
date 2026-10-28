@@ -96,6 +96,49 @@ void main() {
       expect(AdminTx({'id': '1', 'type': 'cable', 'serviceID': 'gotv', 'packageName': 'GOtv Max N8,500'}).title, 'GOtv Max');
       expect(AdminTx({'id': '2', 'type': 'funding', 'description': 'Debit: correction'}).title, 'Wallet debit');
       expect(AdminTx({'id': '3', 'type': 'funding', 'description': 'Wallet credit'}).title, 'Wallet credit');
+      expect(AdminTx({'id': '4', 'type': 'funding', 'channel': 'revenue', 'description': 'Revenue withdrawal'}).title,
+          'Revenue withdrawal');
+    });
+
+    test('super admin flag comes from the API user', () {
+      final u = AppUser.fromJson({'id': '1', 'email': 'alusinebarrie578@gmail.com', 'isAdmin': true, 'isSuperAdmin': true});
+      expect(u.isSuperAdmin, isTrue);
+      expect(u.copyWith(balance: 1).isSuperAdmin, isTrue);
+      expect(AppUser.fromJson({'id': '2', 'isAdmin': true}).isSuperAdmin, isFalse);
+    });
+
+    test('wallets parse; super admin revenue only when sent', () {
+      final admin = WalletSummary({
+        'paypointWallet': {'balance': 150000.5},
+        'revenue': {'balance': 494, 'earned': 520, 'withdrawn': 26, 'percent': 1.3},
+        'ledger': [
+          {'id': 'l1', 'wallet': 'pool', 'kind': 'payment', 'title': 'Payment', 'amount': -4400, 'balanceAfter': 145600},
+          {'id': 'l2', 'wallet': 'adminRevenue', 'kind': 'revenue', 'title': 'Revenue', 'amount': 57.2, 'balanceAfter': 494},
+        ],
+      });
+      expect(admin.paypointBalance, 150000.5);
+      expect(admin.revenueBalance, 494);
+      expect(admin.revenueWithdrawn, 26);
+      expect(admin.revenuePercent, 1.3);
+      expect(admin.hasSuperRevenue, isFalse);
+      expect(admin.ledger.first.credit, isFalse);
+      expect(admin.ledger.first.walletName, 'Paypoint wallet');
+      expect(admin.ledger.last.credit, isTrue);
+      expect(admin.ledger.first.by, isNull);
+
+      final sup = WalletSummary({
+        'superRevenue': {'total': 190, 'percent': 0.5},
+      });
+      expect(sup.hasSuperRevenue, isTrue);
+      expect(sup.superRevenueTotal, 190);
+      expect(sup.paypointBalance, 0);
+
+      final st = AdminStats({
+        'isSuper': true,
+        'paypointWallet': {'balance': 10},
+      });
+      expect(st.isSuper, isTrue);
+      expect(st.wallets.paypointBalance, 10);
     });
   });
 

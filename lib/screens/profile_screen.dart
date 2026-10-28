@@ -204,7 +204,7 @@ class ProfileScreen extends StatelessWidget {
                     if (s.isAdmin)
                       _MenuRow(
                         icon: Icons.admin_panel_settings_rounded,
-                        label: 'Admin dashboard',
+                        label: s.isSuperAdmin ? 'Super admin console' : 'Admin dashboard',
                         highlight: true,
                         onTap: () => Navigator.of(context).pushNamed(Routes.admin),
                       ),
