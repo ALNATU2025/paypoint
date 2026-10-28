@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../core/routes.dart';
 import '../core/theme.dart';
@@ -18,7 +17,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _form = GlobalKey<FormState>();
-  final _phone = TextEditingController();
+  final _email = TextEditingController();
   final _password = TextEditingController();
   bool _busy = false;
   bool _obscure = true;
@@ -26,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _phone.dispose();
+    _email.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -40,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     final s = AppScope.read(context);
     try {
-      await s.login(phone: _phone.text.trim(), password: _password.text);
+      await s.login(email: _email.text.trim(), password: _password.text);
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(s.hasPin ? Routes.main : Routes.createPin, (_) => false);
     } on ApiException catch (e) {
@@ -109,22 +108,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           FadeSlideIn(
                             delay: Stagger.at(2),
                             child: TextFormField(
-                              controller: _phone,
-                              keyboardType: TextInputType.phone,
+                              controller: _email,
+                              keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
-                              autofillHints: const [AutofillHints.telephoneNumber],
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
-                                LengthLimitingTextInputFormatter(16),
-                              ],
+                              autofillHints: const [AutofillHints.email],
+                              autocorrect: false,
                               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                               decoration: const InputDecoration(
-                                labelText: 'Phone number',
-                                hintText: '0803 456 7890',
-                                prefixIcon: Icon(Icons.phone_iphone_rounded),
+                                labelText: 'Email',
+                                hintText: 'you@example.com',
+                                prefixIcon: Icon(Icons.alternate_email_rounded),
                               ),
-                              validator: (v) =>
-                                  (v ?? '').replaceAll(RegExp(r'\D'), '').length < 10 ? 'Enter your phone number' : null,
+                              validator: (v) => (v ?? '').trim().isEmpty ? 'Enter your email' : null,
                             ),
                           ),
                           const SizedBox(height: 16),

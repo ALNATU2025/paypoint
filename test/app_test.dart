@@ -92,7 +92,8 @@ void main() {
         return {'success': true, 'data': <dynamic>[]};
       });
       await s.init();
-      await s.login(phone: '08031234567', password: 'secret1');
+      await s.login(email: 'ada@example.com', password: 'secret1');
+      expect(jsonDecode(calls.first.body), {'email': 'ada@example.com', 'password': 'secret1'});
       expect(s.loggedIn, isTrue);
       expect(s.walletBalance, 5000);
       expect(s.api.token, 'tok');
@@ -101,11 +102,11 @@ void main() {
     });
 
     test('backend errors surface as readable messages', () async {
-      final s = build((r) => {'_status': 401, 'success': false, 'message': 'Incorrect phone number or password'});
+      final s = build((r) => {'_status': 401, 'success': false, 'message': 'Incorrect email or password'});
       await s.init();
       await expectLater(
-        s.login(phone: '08031234567', password: 'x'),
-        throwsA(isA<ApiException>().having((e) => e.message, 'message', 'Incorrect phone number or password')),
+        s.login(email: 'ada@example.com', password: 'x'),
+        throwsA(isA<ApiException>().having((e) => e.message, 'message', 'Incorrect email or password')),
       );
     });
 
