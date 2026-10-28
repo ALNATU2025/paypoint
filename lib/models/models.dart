@@ -108,6 +108,7 @@ class AppUser {
     required this.balance,
     required this.hasPin,
     this.isAdmin = false,
+    this.isSuperAdmin = false,
   });
 
   final String id;
@@ -120,6 +121,9 @@ class AppUser {
   /// Can open the admin dashboard (email listed in the backend's ADMIN_EMAILS).
   final bool isAdmin;
 
+  /// Super admin (backend SUPER_ADMIN_EMAILS): funds the Paypoint wallet.
+  final bool isSuperAdmin;
+
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
         id: j['id'] as String,
         fullName: (j['fullName'] ?? '') as String,
@@ -128,6 +132,7 @@ class AppUser {
         balance: (j['balance'] as num? ?? 0).toDouble(),
         hasPin: j['hasPin'] == true,
         isAdmin: j['isAdmin'] == true,
+        isSuperAdmin: j['isSuperAdmin'] == true,
       );
 
   AppUser copyWith({double? balance, bool? hasPin}) => AppUser(
@@ -138,6 +143,7 @@ class AppUser {
         balance: balance ?? this.balance,
         hasPin: hasPin ?? this.hasPin,
         isAdmin: isAdmin,
+        isSuperAdmin: isSuperAdmin,
       );
 }
 

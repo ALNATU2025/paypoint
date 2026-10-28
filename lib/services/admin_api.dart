@@ -23,6 +23,12 @@ class AdminStats {
   String get vtpassMode => (_m('vtpass')['mode'] ?? 'live').toString();
   double? get vtpassBalance => (_m('vtpass')['balance'] as num?)?.toDouble();
 
+  /// Signed in as super admin (sees everything, including VTPass balance).
+  bool get isSuper => _j['isSuper'] == true;
+
+  /// Wallet summary that comes with the stats.
+  WalletSummary get wallets => WalletSummary(_j);
+
   /// serviceID → (amount, count)
   Map<String, (double, int)> get byProvider => {
         for (final e in _m('byProvider').entries)
@@ -30,6 +36,63 @@ class AdminStats {
             _n((e.value as Map<String, dynamic>)['amount']).toDouble(),
             _n((e.value as Map<String, dynamic>)['count']).toInt(),
           ),
+      };
+}
+
+/// Paypoint wallet (pool) and Revenue wallets.
+class WalletSummary {
+  WalletSummary(this._j);
+  final Map<String, dynamic> _j;
+
+  static double _d(Object? v) => v is num ? v.toDouble() : 0;
+  Map<String, dynamic> _m(String k) => (_j[k] as Map<String, dynamic>?) ?? const {};
+
+  /// Every payment is held from here; when it can't cover one, payments stop.
+  double get paypointBalance => _d(_m('paypointWallet')['balance']);
+  double get revenueBalance => _d(_m('revenue')['balance']);
+  double get revenueEarned => _d(_m('revenue')['earned']);
+  double get revenueWithdrawn => _d(_m('revenue')['withdrawn']);
+  double get revenuePercent => _d(_m('revenue')['percent']);
+
+  /// Only present for super admins.
+  bool get hasSuperRevenue => _j['superRevenue'] is Map;
+  double get superRevenueTotal => _d(_m('superRevenue')['total']);
+  double get superRevenuePercent => _d(_m('superRevenue')['percent']);
+
+  List<LedgerEntry> get ledger =>
+      ((_j['ledger'] as List<dynamic>?) ?? const []).cast<Map<String, dynamic>>().map(LedgerEntry.new).toList();
+}
+
+/// One movement on a platform wallet.
+class LedgerEntry {
+  LedgerEntry(Map<String, dynamic> j)
+      : id = (j['id'] ?? '') as String,
+        wallet = (j['wallet'] ?? 'pool') as String,
+        kind = (j['kind'] ?? '') as String,
+        title = (j['title'] ?? '') as String,
+        amount = (j['amount'] as num? ?? 0).toDouble(),
+        balanceAfter = (j['balanceAfter'] as num? ?? 0).toDouble(),
+        note = (j['note'] ?? '') as String,
+        by = j['by'] as String?,
+        createdAt = DateTime.tryParse((j['createdAt'] ?? '').toString())?.toLocal() ?? DateTime.now();
+
+  final String id;
+  final String wallet;
+  final String kind;
+  final String title;
+  final double amount;
+  final double balanceAfter;
+  final String note;
+  final String? by;
+  final DateTime createdAt;
+
+  bool get credit => amount >= 0;
+
+  String get walletName => switch (wallet) {
+        'pool' => 'Paypoint wallet',
+        'adminRevenue' => 'Admin revenue',
+        'superRevenue' => 'Super admin revenue',
+        _ => wallet,
       };
 }
 
@@ -71,6 +134,7 @@ class AdminTx {
         reference = (j['reference'] ?? '') as String,
         message = j['message'] as String?,
         refunded = j['refunded'] == true,
+        channel = j['channel'] as String?,
         userName = j['userName'] as String?,
         userEmail = j['userEmail'] as String?,
         createdAt = DateTime.tryParse((j['createdAt'] ?? '').toString())?.toLocal() ?? DateTime.now();
@@ -87,6 +151,7 @@ class AdminTx {
   final String reference;
   final String? message;
   final bool refunded;
+  final String? channel;
   final String? userName;
   final String? userEmail;
   final DateTime createdAt;
@@ -94,7 +159,10 @@ class AdminTx {
   bool get isCable => type == 'cable';
   bool get isDebit => description.startsWith('Debit:');
   String get title {
-    if (!isCable) return isDebit ? 'Wallet debit' : 'Wallet credit';
+    if (!isCable) {
+      if (channel == 'revenue') return 'Revenue withdrawal';
+      return isDebit ? 'Wallet debit' : 'Wallet credit';
+    }
     final p = Catalog.byServiceID(serviceID);
     final name = p?.name ?? serviceID ?? 'Cable';
     final pkg = packageName == null ? '' : TvPackage.cleanName(packageName!, name);
@@ -149,4 +217,21 @@ class AdminApi {
 
   Future<AdminTx> requery(String txId) async =>
       AdminTx(await api.post('/api/admin/transactions/$txId/requery') as Map<String, dynamic>);
+
+  /// Wallets and their history. [wallet]: pool, adminRevenue or superRevenue.
+  Future<WalletSummary> wallets({String? wallet}) async => WalletSummary(
+      await api.get('/api/admin/wallets?limit=100${wallet == null ? '' : '&wallet=$wallet'}') as Map<String, dynamic>);
+
+  /// Admin: move revenue to the Paypoint wallet ([toPool]) or the admin's own wallet.
+  Future<WalletSummary> withdrawRevenue(double amount, {required bool toPool}) async => WalletSummary(
+      await api.post('/api/admin/revenue/withdraw', {'amount': amount, 'to': toPool ? 'pool' : 'main'})
+          as Map<String, dynamic>);
+
+  /// Super admin: fund the Paypoint wallet.
+  Future<WalletSummary> creditPool(double amount, String note) async =>
+      WalletSummary(await api.post('/api/super/pool/credit', {'amount': amount, 'note': note}) as Map<String, dynamic>);
+
+  /// Super admin: correct the Paypoint wallet.
+  Future<WalletSummary> debitPool(double amount, String note) async =>
+      WalletSummary(await api.post('/api/super/pool/debit', {'amount': amount, 'note': note}) as Map<String, dynamic>);
 }
