@@ -261,19 +261,14 @@ class _Glow extends StatelessWidget {
 const _inputStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.ink);
 
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text, {this.hint});
+  const _FieldLabel(this.text);
   final String text;
-  final String? hint;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Text.rich(
-          TextSpan(children: [
-            TextSpan(text: text),
-            if (hint != null)
-              TextSpan(text: ' $hint', style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.muted)),
-          ]),
+        child: Text(
+          text,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.label),
         ),
       );
