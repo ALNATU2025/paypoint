@@ -118,41 +118,41 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         validator: (v) => (v == null || v.trim().length < 3) ? 'Enter your full name' : null,
                       )),
                       const SizedBox(height: 18),
-                      FadeSlideIn(delay: Stagger.at(3), child: const _FieldLabel('Phone number')),
+                      FadeSlideIn(delay: Stagger.at(3), child: const _FieldLabel('Email')),
                       FadeSlideIn(
                         delay: Stagger.at(3),
                         child: TextFormField(
-                        controller: _phone,
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.telephoneNumberNational],
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(11),
-                        ],
-                        style: _inputStyle,
-                        decoration: const InputDecoration(
-                          hintText: '803 456 7890',
-                          prefixIcon: _CountryPrefix(),
-                          prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.email],
+                          autocorrect: false,
+                          style: _inputStyle,
+                          decoration: const InputDecoration(hintText: 'you@example.com'),
+                          validator: (v) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch((v ?? '').trim())
+                              ? null
+                              : 'Enter a valid email',
                         ),
-                        validator: (v) => (v == null || v.length < 10) ? 'Enter a valid phone number' : null,
-                      )),
+                      ),
                       const SizedBox(height: 18),
-                      FadeSlideIn(delay: Stagger.at(4), child: const _FieldLabel('Email', hint: '(optional, for receipts)')),
+                      FadeSlideIn(delay: Stagger.at(4), child: const _FieldLabel('Phone number')),
                       FadeSlideIn(
                         delay: Stagger.at(4),
                         child: TextFormField(
-                        controller: _email,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        style: _inputStyle,
-                        decoration: const InputDecoration(hintText: 'you@example.com'),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return null;
-                          return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v) ? null : 'Enter a valid email';
-                        },
-                      )),
+                          controller: _phone,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.telephoneNumber],
+                          // Any country, any length: digits, spaces, +, -, ( and ).
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+()\- ]'))],
+                          style: _inputStyle,
+                          decoration: const InputDecoration(
+                            hintText: 'e.g. +234 803 456 7890',
+                            prefixIcon: Icon(Icons.phone_iphone_rounded),
+                          ),
+                          validator: (v) => RegExp(r'\d').hasMatch(v ?? '') ? null : 'Enter your phone number',
+                        ),
+                      ),
                       const SizedBox(height: 18),
                       FadeSlideIn(delay: Stagger.at(5), child: const _FieldLabel('Password')),
                       FadeSlideIn(
@@ -261,39 +261,15 @@ class _Glow extends StatelessWidget {
 const _inputStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.ink);
 
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text, {this.hint});
+  const _FieldLabel(this.text);
   final String text;
-  final String? hint;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Text.rich(
-          TextSpan(children: [
-            TextSpan(text: text),
-            if (hint != null)
-              TextSpan(text: ' $hint', style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.muted)),
-          ]),
+        child: Text(
+          text,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.label),
-        ),
-      );
-}
-
-class _CountryPrefix extends StatelessWidget {
-  const _CountryPrefix();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.fromLTRB(18, 4, 12, 4),
-        decoration: const BoxDecoration(border: Border(right: BorderSide(color: AppColors.border))),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('+234', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.ink)),
-            SizedBox(width: 4),
-            Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppColors.body),
-          ],
         ),
       );
 }

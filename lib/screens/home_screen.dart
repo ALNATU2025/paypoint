@@ -624,27 +624,29 @@ class _FundWalletSheetState extends State<_FundWalletSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'To add money now, contact Paypoint support with your wallet number below. '
+                    'To add money now, contact Paypoint support with your account email below. '
                     'Your balance updates as soon as it is credited.',
                     style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.label),
                   ),
                   const SizedBox(height: 14),
-                  const Text('WALLET NUMBER',
+                  const Text('ACCOUNT EMAIL',
                       style: TextStyle(fontSize: 10, letterSpacing: 1.4, fontWeight: FontWeight.w800, color: AppColors.muted)),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Expanded(
-                        child: Text(s.phone,
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                        child: Text(s.email.isNotEmpty ? s.email : s.phone,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                       ),
                       IconButton.filledTonal(
-                        tooltip: 'Copy wallet number',
+                        tooltip: 'Copy account email',
                         onPressed: () {
-                          Clipboard.setData(ClipboardData(text: s.phone));
+                          Clipboard.setData(ClipboardData(text: s.email.isNotEmpty ? s.email : s.phone));
                           HapticFeedback.selectionClick();
                           ScaffoldMessenger.of(widget.hostContext)
-                              .showSnackBar(const SnackBar(content: Text('Wallet number copied')));
+                              .showSnackBar(const SnackBar(content: Text('Copied')));
                         },
                         icon: const Icon(Icons.copy_rounded, size: 18),
                       ),

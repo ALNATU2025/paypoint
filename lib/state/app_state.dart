@@ -140,21 +140,21 @@ class AppState extends ChangeNotifier {
 
   Future<void> register({
     required String fullName,
+    required String email,
     required String phone,
     required String password,
-    String email = '',
   }) async {
     final data = await api.post('/api/auth/register', {
       'fullName': fullName,
+      'email': email,
       'phone': phone,
       'password': password,
-      if (email.isNotEmpty) 'email': email,
     });
     await _startSession(data as Map<String, dynamic>);
   }
 
-  Future<void> login({required String phone, required String password}) async {
-    final data = await api.post('/api/auth/login', {'phone': phone, 'password': password});
+  Future<void> login({required String email, required String password}) async {
+    final data = await api.post('/api/auth/login', {'email': email, 'password': password});
     await _startSession(data as Map<String, dynamic>);
     refreshHistory();
   }
