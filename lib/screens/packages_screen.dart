@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../services/api_client.dart';
 import '../state/app_state.dart';
+import '../widgets/amount_sheet.dart';
 import '../widgets/common.dart';
 import '../widgets/motion.dart';
 
@@ -27,6 +28,21 @@ class _PackagesScreenState extends State<PackagesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  /// DStv: pay an exact amount instead of a package.
+  Future<void> _payAny(AppState s) async {
+    final limits = s.customAmountLimits(s.draft.provider);
+    if (limits == null) return;
+    final amount = await showAmountSheet(
+      context,
+      title: 'Pay any amount',
+      subtitle: 'The exact amount you enter is paid to this decoder.',
+      initial: s.draft.custom ? s.draft.package?.monthlyPrice : s.draft.customer?.renewalAmount?.round(),
+      min: limits.$1,
+      max: limits.$2,
+    );
+    if (amount != null && mounted) s.selectCustomAmount(amount);
   }
 
   Future<void> _load({bool force = false}) async {
@@ -52,7 +68,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
   /// Keep the selected package pointing at the live (current-price) entry, and
   /// preselect the customer's current bouquet when nothing is chosen yet.
   void _syncSelection(AppState s) {
-    if (s.draft.renew) return;
+    if (s.draft.renew || s.draft.custom) return;
     final list = s.packagesFor(s.draft.provider) ?? const <TvPackage>[];
     final want = s.draft.package?.id ?? s.draft.customer?.currentBouquetCode;
     final match = list.where((p) => p.id == want).toList();
@@ -199,7 +215,23 @@ class _PackagesScreenState extends State<PackagesScreen> {
                       const Text('Or change bouquet',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.label)),
                     ],
-                    if (p.supportsMonths && !d.renew) ...[
+                    if (s.customAmountLimits(p) != null) ...[
+                      SizedBox(height: s.canRenew ? 10 : 16),
+                      FadeSlideIn(
+                        child: SelectTile(
+                          radioFirst: true,
+                          selected: d.custom,
+                          onTap: () => _payAny(s),
+                          title: 'Pay any amount',
+                          subtitle: d.custom ? 'Tap to change the amount' : 'Enter exactly what you want to pay',
+                          trailing: d.custom
+                              ? Text(Fmt.naira(d.package?.monthlyPrice ?? 0),
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800))
+                              : const Icon(Icons.edit_rounded, size: 20, color: AppColors.blue),
+                        ),
+                      ),
+                    ],
+                    if (p.supportsMonths && !d.renew && !d.custom) ...[
                       const SizedBox(height: 16),
                       FadeSlideIn(
                         child: SlidingSegments(
@@ -235,11 +267,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
               ),
             ),
             _CheckoutBar(
-              caption: sel == null
-                  ? 'No package selected'
-                  : d.renew
-                      ? 'Renew ${sel.name}'
-                      : '${sel.name} · ${d.months} month${d.months == 1 ? '' : 's'}',
+              caption: d.caption,
               total: d.total.toDouble(),
               onContinue: sel == null ? null : () => Navigator.of(context).pushNamed(Routes.review),
             ),

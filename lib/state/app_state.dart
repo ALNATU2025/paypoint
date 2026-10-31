@@ -10,6 +10,9 @@ import '../services/api_client.dart';
 /// Marker id for "renew current bouquet" in [PaymentDraft.package].
 const kRenewalPackageId = '__renew__';
 
+/// Marker id for "pay any amount" (DStv) in [PaymentDraft.package].
+const kCustomPackageId = '__amount__';
+
 /// The in-progress subscription the user is building across the pay flow.
 class PaymentDraft {
   TvProvider provider = Catalog.dstv;
@@ -23,11 +26,31 @@ class PaymentDraft {
   /// (DStv / GOtv), instead of buying a specific package.
   bool renew = false;
 
+  /// Pay an amount the user typed (DStv), instead of a package price.
+  bool custom = false;
+
+  /// Add DStv Extra View, charged at exactly [extraViewPrice].
+  bool extraView = false;
+  int extraViewPrice = 0;
+
   /// Flat fee the backend adds per payment (from the packages response).
   int serviceFee = 0;
 
   int get subtotal => package?.priceFor(months) ?? 0;
-  int get total => package == null ? 0 : subtotal + serviceFee;
+  int get extraViewTotal => extraView ? extraViewPrice : 0;
+  int get total => package == null ? 0 : subtotal + serviceFee + extraViewTotal;
+
+  /// One line describing what's being paid for.
+  String get caption {
+    final pkg = package;
+    if (pkg == null) return 'No package selected';
+    final base = renew
+        ? 'Renew ${pkg.name}'
+        : custom
+            ? 'Custom amount'
+            : '${pkg.name} · $months month${months == 1 ? '' : 's'}';
+    return extraView ? '$base + Extra View' : base;
+  }
 
   DateTime get newExpiry {
     final now = DateTime.now();
@@ -67,6 +90,8 @@ class AppState extends ChangeNotifier {
 
   final Map<TvProviderId, List<TvPackage>> _packages = {};
   final Map<TvProviderId, int> _fees = {};
+  final Map<TvProviderId, int> _extraView = {};
+  final Map<TvProviderId, (int, int)> _customLimits = {};
 
   PaymentDraft draft = PaymentDraft();
 
@@ -252,7 +277,9 @@ class AppState extends ChangeNotifier {
   // ---------- pay flow ----------
 
   void startFlow(TvProvider provider) {
-    draft = PaymentDraft()..provider = provider;
+    draft = PaymentDraft()
+      ..provider = provider
+      ..extraViewPrice = _extraView[provider.id] ?? 0;
     notifyListeners();
   }
 
@@ -274,6 +301,9 @@ class AppState extends ChangeNotifier {
       ..customer = null
       ..package = null
       ..renew = false
+      ..custom = false
+      ..extraView = false
+      ..extraViewPrice = _extraView[p.id] ?? 0
       ..months = 1
       ..number = '';
     notifyListeners();
@@ -282,10 +312,13 @@ class AppState extends ChangeNotifier {
   void setNumber(String n) {
     final digits = n.replaceAll(RegExp(r'\D'), '');
     if (digits == draft.number) return;
+    final marker = draft.package?.id == kRenewalPackageId || draft.package?.id == kCustomPackageId;
     draft
       ..number = digits
       ..customer = null
-      ..renew = false;
+      ..renew = false
+      ..custom = false;
+    if (marker) draft.package = null;
     notifyListeners();
   }
 
@@ -314,6 +347,19 @@ class AppState extends ChangeNotifier {
         .toList();
     _packages[p.id] = list;
     _fees[p.id] = (body['serviceFee'] as num? ?? 0).round();
+    final ev = body['extraView'];
+    if (ev is Map && ev['amount'] is num) {
+      _extraView[p.id] = (ev['amount'] as num).round();
+      if (draft.provider.id == p.id) draft.extraViewPrice = _extraView[p.id]!;
+    } else {
+      _extraView.remove(p.id);
+    }
+    final ca = body['customAmount'];
+    if (ca is Map) {
+      _customLimits[p.id] = ((ca['min'] as num? ?? 100).ceil(), (ca['max'] as num? ?? 500000).floor());
+    } else {
+      _customLimits.remove(p.id);
+    }
     if (draft.provider.id == p.id) draft.serviceFee = _fees[p.id]!;
     notifyListeners();
     return list;
@@ -321,6 +367,32 @@ class AppState extends ChangeNotifier {
 
   /// Flat service fee for a provider (reported with its packages).
   int feeFor(TvProvider p) => _fees[p.id] ?? 0;
+
+  /// Extra View price for a provider, or null when it isn't offered (DStv only).
+  int? extraViewPriceFor(TvProvider p) => _extraView[p.id];
+
+  /// (min, max) naira for "pay any amount", or null when not offered (DStv only).
+  (int, int)? customAmountLimits(TvProvider p) =>
+      _customLimits[p.id] ?? (p.id == TvProviderId.dstv ? (100, 500000) : null);
+
+  /// Pay an exact amount the user chose (DStv).
+  void selectCustomAmount(int amount) {
+    draft
+      ..renew = false
+      ..custom = true
+      ..months = 1
+      ..serviceFee = feeFor(draft.provider)
+      ..package = TvPackage(id: kCustomPackageId, name: 'Custom amount', monthlyPrice: amount);
+    notifyListeners();
+  }
+
+  void setExtraView(bool on) {
+    final price = extraViewPriceFor(draft.provider);
+    draft
+      ..extraView = on && price != null
+      ..extraViewPrice = price ?? 0;
+    notifyListeners();
+  }
 
   /// True when VTPass offered a renewal price for the verified decoder.
   bool get canRenew =>
@@ -331,6 +403,7 @@ class AppState extends ChangeNotifier {
     if (c == null || !canRenew) return;
     draft
       ..renew = true
+      ..custom = false
       ..months = 1
       ..serviceFee = feeFor(draft.provider)
       ..package = TvPackage(
@@ -343,9 +416,10 @@ class AppState extends ChangeNotifier {
 
   /// Leave renewal mode to pick a different package.
   void chooseNewPackage() {
-    if (!draft.renew) return;
+    if (!draft.renew && !draft.custom) return;
     draft
       ..renew = false
+      ..custom = false
       ..package = null;
     notifyListeners();
   }
@@ -353,6 +427,7 @@ class AppState extends ChangeNotifier {
   void setPackage(TvPackage p) {
     draft
       ..renew = false
+      ..custom = false
       ..package = p
       ..serviceFee = feeFor(draft.provider);
     notifyListeners();
@@ -378,7 +453,13 @@ class AppState extends ChangeNotifier {
       'serviceID': d.provider.serviceID,
       'billersCode': d.number,
       'pin': pin,
-      if (d.renew) 'mode': 'renew' else ...{'variationCode': pkg.id, 'months': d.months},
+      if (d.renew)
+        'mode': 'renew'
+      else if (d.custom)
+        ...{'mode': 'amount', 'amount': pkg.monthlyPrice}
+      else
+        ...{'variationCode': pkg.id, 'months': d.months},
+      if (d.extraView) 'extraView': true,
       if (d.customer != null) 'customerName': d.customer!.accountName,
     });
     final data = body['data'] as Map<String, dynamic>?;
@@ -388,10 +469,14 @@ class AppState extends ChangeNotifier {
     }
     final txJson = data?['transaction'] as Map<String, dynamic>?;
     final tx = txJson == null ? null : TvTransaction.fromJson(txJson, Catalog.byServiceID);
-    if (tx != null) {
-      transactions.removeWhere((t) => t.id == tx.id);
-      transactions.insert(0, tx);
+    final evJson = data?['extraViewTransaction'] as Map<String, dynamic>?;
+    final ev = evJson == null ? null : TvTransaction.fromJson(evJson, Catalog.byServiceID);
+    for (final t in [tx, ev]) {
+      if (t == null) continue;
+      transactions.removeWhere((x) => x.id == t.id);
     }
+    if (ev != null) transactions.insert(0, ev);
+    if (tx != null) transactions.insert(0, tx);
     notifyListeners();
     if (body['success'] == true && tx != null) return PayResult(tx, message);
     throw ApiException(message.isEmpty ? 'Payment failed' : message, code: body['code'] as String?, data: tx);

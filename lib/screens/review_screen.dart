@@ -16,11 +16,16 @@ class ReviewScreen extends StatelessWidget {
     final s = AppScope.of(context);
     final d = s.draft;
     final pkg = d.package!;
+    final extraViewPrice = s.extraViewPriceFor(d.provider);
 
     final List<(String, String, Color?)> rows = [
       ('Account name', d.customer?.accountName ?? '—', null),
       (d.provider.idLabel.replaceAll(' number', ''), Fmt.smartcard(d.number), null),
-      ('Package', d.renew ? '${pkg.name} (renewal)' : '${pkg.name} · ${d.months} mo', null),
+      if (d.custom)
+        ('Amount', Fmt.naira(pkg.monthlyPrice), null)
+      else
+        ('Package', d.renew ? '${pkg.name} (renewal)' : '${pkg.name} · ${d.months} mo', null),
+      if (d.extraView) ('Extra View', Fmt.naira(d.extraViewPrice), null),
       ('Paid from', 'Wallet · ${Fmt.naira(s.walletBalance, kobo: true)}', null),
       ('Service fee', d.serviceFee == 0 ? 'Free' : Fmt.naira(d.serviceFee), d.serviceFee == 0 ? AppColors.success : null),
     ];
@@ -85,10 +90,7 @@ class ReviewScreen extends StatelessWidget {
                                           radius: 14,
                                           tint: const Color(0x1AFFFFFF),
                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                          child: Text(
-                                              d.renew
-                                                  ? 'Renew ${pkg.name}'
-                                                  : '${pkg.name} · ${d.months} month${d.months == 1 ? '' : 's'}',
+                                          child: Text(d.caption,
                                               style: const TextStyle(
                                                   color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
                                         ),
@@ -103,6 +105,39 @@ class ReviewScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (extraViewPrice != null) ...[
+                    const SizedBox(height: 16),
+                    FadeSlideIn(
+                      delay: Stagger.at(2),
+                      child: AppCard(
+                        radius: 22,
+                        padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+                        border: Border.all(
+                          color: d.extraView ? AppColors.blue : AppColors.border,
+                          width: d.extraView ? 1.6 : 1,
+                        ),
+                        onTap: () => s.setExtraView(!d.extraView),
+                        child: Row(
+                          children: [
+                            IconTile(icon: Icons.connected_tv_rounded, size: 42, radius: 13, active: d.extraView),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Add Extra View', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                                  const SizedBox(height: 2),
+                                  Text('Second decoder · +${Fmt.naira(extraViewPrice)}',
+                                      style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                                ],
+                              ),
+                            ),
+                            Switch(value: d.extraView, onChanged: s.setExtraView),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   AppCard(
                     radius: 24,
