@@ -1,0 +1,24 @@
+
+::group::✅ Passing tests
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Fmt formats naira with grouping
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Fmt formats smartcard numbers
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Models package names from VTPass are cleaned up
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Models transaction parses from the API
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Admin isAdmin comes from the API user
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Admin stats parse
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Admin transaction titles
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Admin super admin flag comes from the API user
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: Admin wallets parse; super admin revenue only when sent
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: AppState with a fake backend login stores the token and user
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: AppState with a fake backend backend errors surface as readable messages
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: AppState with a fake backend pay sends the VTPass fields and updates the balance
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: AppState with a fake backend renewal sends mode renew without a package code
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: AppState with a fake backend DStv: custom amount and Extra View go to the backend; VTPass prices from packages
+✅ /home/runner/work/paypoint/paypoint/test/app_test.dart: AppState with a fake backend failed payment throws with the refunded transaction
+✅ /home/runner/work/paypoint/paypoint/test/widget_test.dart: PrimaryButton calls onPressed once per tap
+✅ /home/runner/work/paypoint/paypoint/test/widget_test.dart: Disabled PrimaryButton ignores taps
+✅ /home/runner/work/paypoint/paypoint/test/widget_test.dart: SlidingSegments reports the tapped index
+✅ /home/runner/work/paypoint/paypoint/test/widget_test.dart: FadeSlideIn ends fully visible
+::endgroup::
+
+🎉 19 tests passed.
