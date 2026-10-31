@@ -8,6 +8,7 @@ import '../data/catalog.dart';
 import '../models/models.dart';
 import '../services/api_client.dart';
 import '../state/app_state.dart';
+import '../widgets/amount_sheet.dart';
 import '../widgets/common.dart';
 import '../widgets/motion.dart';
 
@@ -51,6 +52,23 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
     } finally {
       if (mounted) setState(() => _checking = false);
     }
+  }
+
+  /// DStv: pay any amount (optionally starting from the renewal amount).
+  Future<void> _payAny(AppState s, {int? initial}) async {
+    final limits = s.customAmountLimits(s.draft.provider);
+    if (limits == null) return;
+    final amount = await showAmountSheet(
+      context,
+      title: 'Pay any amount',
+      subtitle: 'The exact amount you enter is paid to this decoder.',
+      initial: initial,
+      min: limits.$1,
+      max: limits.$2,
+    );
+    if (amount == null || !mounted) return;
+    s.selectCustomAmount(amount);
+    Navigator.of(context).pushNamed(Routes.review);
   }
 
   void _onChanged(String v, TvProvider p) {
@@ -205,6 +223,9 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
                                 // Only DStv / GOtv return a renewal price.
                                 renewAmount: s.canRenew ? customer.renewalAmount : null,
                                 fee: s.feeFor(p),
+                                onEdit: s.customAmountLimits(p) == null
+                                    ? null
+                                    : () => _payAny(s, initial: customer.renewalAmount?.round()),
                               ),
                             ),
                           ),
@@ -235,23 +256,59 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
                               },
                             ),
                             const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: PrimaryButton(
+                                    label: 'Change package',
+                                    icon: Icons.swap_horiz_rounded,
+                                    tone: ButtonTone.soft,
+                                    height: 50,
+                                    onPressed: () {
+                                      s.chooseNewPackage();
+                                      Navigator.of(context).pushNamed(Routes.packages);
+                                    },
+                                  ),
+                                ),
+                                if (s.customAmountLimits(p) != null) ...[
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: PrimaryButton(
+                                      label: 'Other amount',
+                                      icon: Icons.edit_rounded,
+                                      tone: ButtonTone.soft,
+                                      height: 50,
+                                      onPressed: () => _payAny(s, initial: customer.renewalAmount?.round()),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             PrimaryButton(
-                              label: 'Change package',
-                              icon: Icons.swap_horiz_rounded,
-                              tone: ButtonTone.soft,
-                              height: 50,
+                              label: 'Choose package',
+                              trailingIcon: Icons.arrow_forward_rounded,
+                              shimmer: true,
                               onPressed: () {
                                 s.chooseNewPackage();
                                 Navigator.of(context).pushNamed(Routes.packages);
                               },
                             ),
+                            if (s.customAmountLimits(p) != null) ...[
+                              const SizedBox(height: 10),
+                              PrimaryButton(
+                                label: 'Pay any amount',
+                                icon: Icons.edit_rounded,
+                                tone: ButtonTone.soft,
+                                height: 50,
+                                onPressed: () => _payAny(s),
+                              ),
+                            ],
                           ],
-                        )
-                      : PrimaryButton(
-                          label: 'Choose package',
-                          trailingIcon: Icons.arrow_forward_rounded,
-                          shimmer: true,
-                          onPressed: () => Navigator.of(context).pushNamed(Routes.packages),
                         ),
             ),
           ],
@@ -265,8 +322,11 @@ class _SmartcardScreenState extends State<SmartcardScreen> {
 String _money(num v) => Fmt.naira(v, kobo: v != v.roundToDouble());
 
 class _VerifiedCard extends StatelessWidget {
-  const _VerifiedCard({required this.customer, this.renewAmount, this.fee = 0});
+  const _VerifiedCard({required this.customer, this.renewAmount, this.fee = 0, this.onEdit});
   final CustomerLookup customer;
+
+  /// Pay a different amount instead (DStv).
+  final VoidCallback? onEdit;
 
   /// Amount due to renew the current bouquet; null when renewal isn't offered.
   final num? renewAmount;
@@ -369,7 +429,29 @@ class _VerifiedCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(Icons.autorenew_rounded, color: Colors.white, size: 28),
+                  if (onEdit != null)
+                    Material(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: onEdit,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.edit_rounded, color: Colors.white, size: 16),
+                              SizedBox(width: 6),
+                              Text('Edit',
+                                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    const Icon(Icons.autorenew_rounded, color: Colors.white, size: 28),
                 ],
               ),
             ),

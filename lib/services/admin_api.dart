@@ -26,6 +26,9 @@ class AdminStats {
   /// Signed in as super admin (sees everything, including VTPass balance).
   bool get isSuper => _j['isSuper'] == true;
 
+  /// DStv Extra View price set by the admin.
+  int get extraViewAmount => _n(_m('settings')['extraViewAmount']).round();
+
   /// Wallet summary that comes with the stats.
   WalletSummary get wallets => WalletSummary(_j);
 
@@ -217,6 +220,12 @@ class AdminApi {
 
   Future<AdminTx> requery(String txId) async =>
       AdminTx(await api.post('/api/admin/transactions/$txId/requery') as Map<String, dynamic>);
+
+  /// Set the DStv Extra View price (naira). Returns the saved price.
+  Future<int> setExtraViewPrice(int amount) async {
+    final d = await api.put('/api/admin/settings', {'extraViewAmount': amount}) as Map<String, dynamic>;
+    return (d['extraViewAmount'] as num? ?? amount).round();
+  }
 
   /// Wallets and their history. [wallet]: pool, adminRevenue or superRevenue.
   Future<WalletSummary> wallets({String? wallet}) async => WalletSummary(

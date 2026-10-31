@@ -273,6 +273,60 @@ void main() {
       expect(body.containsKey('months'), isFalse);
     });
 
+    test('DStv: custom amount and Extra View go to the backend; VTPass prices from packages', () async {
+      final s = build((r) {
+        if (r.url.path == '/api/cable/dstv/packages') {
+          return {
+            'success': true,
+            'data': [
+              {'code': 'dstv-padi', 'name': 'DStv Padi N4,400', 'amount': 4400},
+            ],
+            'serviceFee': 0,
+            'customAmount': {'min': 100, 'max': 500000},
+            'extraView': {'amount': 6000},
+          };
+        }
+        if (r.url.path == '/api/cable/pay') {
+          return {
+            'success': true,
+            'message': 'Subscription successful Extra View paid.',
+            'data': {
+              'balance': 100,
+              'transaction': {'id': 'm1', 'status': 'success', 'amount': 2500, 'serviceID': 'dstv',
+                  'billersCode': '7012345678', 'packageName': 'Custom amount', 'months': 1},
+              'extraViewTransaction': {'id': 'e1', 'status': 'success', 'amount': 6000, 'serviceID': 'dstv',
+                  'billersCode': '7012345678', 'packageName': 'Extra View', 'months': 1},
+            },
+          };
+        }
+        return {'success': true, 'data': <dynamic>[]};
+      });
+      s.user = const AppUser(id: 'u1', fullName: 'Ada', phone: '0803', email: '', balance: 9000, hasPin: true);
+      s.startFlow(Catalog.dstv);
+      await s.loadPackages(Catalog.dstv);
+      expect(s.extraViewPriceFor(Catalog.dstv), 6000);
+      expect(s.customAmountLimits(Catalog.dstv), (100, 500000));
+      expect(s.customAmountLimits(Catalog.gotv), isNull);
+      s.setNumber('7012345678');
+      s.selectCustomAmount(2500);
+      s.setExtraView(true);
+      expect(s.draft.total, 8500);
+      expect(s.draft.caption, 'Custom amount + Extra View');
+
+      await s.pay('1234');
+      final body = jsonDecode(calls.last.body) as Map<String, dynamic>;
+      expect(body['mode'], 'amount');
+      expect(body['amount'], 2500);
+      expect(body['extraView'], true);
+      expect(body.containsKey('variationCode'), isFalse);
+      expect(s.transactions.map((t) => t.id).take(2), ['m1', 'e1']);
+
+      // Choosing a package leaves custom-amount mode.
+      s.setPackage(const TvPackage(id: 'dstv-padi', name: 'Padi', monthlyPrice: 4400));
+      expect(s.draft.custom, isFalse);
+      expect(s.draft.total, 10400);
+    });
+
     test('failed payment throws with the refunded transaction', () async {
       final s = build((r) => {
             '_status': 422,

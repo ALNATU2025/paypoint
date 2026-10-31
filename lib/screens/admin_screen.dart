@@ -348,6 +348,8 @@ class _OverviewTab extends StatelessWidget {
                       sub: 'auto-refunded'),
                 ],
               ),
+              const SizedBox(height: 14),
+              _ExtraViewPriceCard(api: api, amount: st.extraViewAmount, onSaved: live.refresh),
               const SizedBox(height: 22),
               const SectionTitle('Sales by provider'),
               const SizedBox(height: 10),
@@ -366,6 +368,62 @@ class _OverviewTab extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// DStv Extra View price (VTPass has no Extra View, so Paypoint charges it itself).
+class _ExtraViewPriceCard extends StatelessWidget {
+  const _ExtraViewPriceCard({required this.api, required this.amount, required this.onSaved});
+  final AdminApi api;
+  final int amount;
+  final Future<void> Function() onSaved;
+
+  Future<void> _edit(BuildContext context) async {
+    final r = await showDialog<(double, String)>(
+      context: context,
+      builder: (_) => const _MoneyDialog(
+        title: 'Extra View price',
+        subtitle: 'Users adding Extra View to DStv pay exactly this amount.',
+        confirm: 'Save',
+        noteHint: 'Note (optional)',
+      ),
+    );
+    if (r == null || !context.mounted) return;
+    try {
+      final saved = await api.setExtraViewPrice(r.$1.round());
+      if (context.mounted) _toast(context, 'Extra View price set to ${Fmt.naira(saved)}');
+      await onSaved();
+    } on ApiException catch (e) {
+      if (context.mounted) _toast(context, e.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      radius: 20,
+      padding: const EdgeInsets.all(14),
+      onTap: () => _edit(context),
+      child: Row(
+        children: [
+          const IconTile(icon: Icons.connected_tv_rounded, size: 40, radius: 12, iconSize: 20),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('DStv Extra View price', style: TextStyle(fontWeight: FontWeight.w800)),
+                SizedBox(height: 2),
+                Text('Charged on top when users add Extra View', style: TextStyle(fontSize: 11.5, color: AppColors.muted)),
+              ],
+            ),
+          ),
+          Text(Fmt.naira(amount), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(width: 6),
+          const Icon(Icons.edit_rounded, size: 18, color: AppColors.blue),
+        ],
+      ),
     );
   }
 }
